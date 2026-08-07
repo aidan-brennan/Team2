@@ -17,7 +17,7 @@ class Player(pygame.sprite.Sprite):
 
         self.can_shoot = True
         self.harpoon_shoot_time = 0
-        self.cooldown_duration = 500
+        self.cooldown_duration = 200
 
         self.flash_surf = self.mask.to_surface(unsetcolor=(0, 0, 0, 0), setcolor=(255, 255 ,255 ,255))
         self.is_flashing = False
@@ -57,7 +57,7 @@ class Player(pygame.sprite.Sprite):
                 gun_pos = self.rect.center + direction * 60
                 Harpoon(harpoon_surf, self.rect.center,direction, (all_sprites, harpoon_sprites))
             
-            #self.can_shoot = False
+            self.can_shoot = False
             self.harpoon_shoot_time = pygame.time.get_ticks()
 
 class Harpoon(pygame.sprite.Sprite):

@@ -57,7 +57,6 @@ class Player(pygame.sprite.Sprite):
                 gun_pos = self.rect.center + direction * 60
                 Harpoon(harpoon_surf, self.rect.center,direction, (all_sprites, harpoon_sprites))
             
-            self.can_shoot = False
             self.harpoon_shoot_time = pygame.time.get_ticks()
 
 class Harpoon(pygame.sprite.Sprite):
@@ -68,7 +67,6 @@ class Harpoon(pygame.sprite.Sprite):
         self.direction = direction
 
         angle = self.direction.angle_to(pygame.Vector2(-1, 0))
-
         self.image = pygame.transform.rotate(self.image, angle)
     def update(self, dt):
         self.rect.center += self.direction * 300 * dt

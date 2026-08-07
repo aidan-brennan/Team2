@@ -1,24 +1,80 @@
 import pygame
-
-pygame.init()
-WINDOW_WIDTH, WINDOW_HEIGHT = 1280, 720
-display_surface = pygame.display.set_mode((WINDOW_WIDTH, WINDOW_HEIGHT))
-running = True
+from random import randint, uniform
+from os.path import join
 
 class Player(pygame.sprite.Sprite):
     def __init__(self, groups):
         super().__init__(groups)
-        self.image = pygame.image.load('images/jerryharpoon.png').convert_alpha()
+        self.image = pygame.image.load('images/jerryharpoon.png')
         self.rect = self.image.get_frect(center = (WINDOW_WIDTH / 2, WINDOW_HEIGHT / 2))
         self.direction = pygame.Vector2()
         self.mask = pygame.mask.from_surface(self.image)
 
+        self.normal_surf = self.image.copy()
+        self.speed = 600
+        self.rotation_speed = randint(40,800)
+        self.rotation = 0
+
+        self.can_shoot = True
+        self.laser_shoot_time = 0
+        self.cooldown_duration = 0
+
+        self.flash_surf = self.mask.to_surface(unsetcolor=(0, 0, 0, 0), setcolor=(255, 255 ,255 ,255))
+        self.is_flashing = False
+        self.flash_time = 0
+        self.flash_duration = 150
+        self.health = 3
+
+    def update(self, dt):
+        keys = pygame.key.get_pressed()
+        self.direction.x = int(keys[pygame.K_RIGHT]) - int(keys[pygame.K_LEFT])
+        self.direction.y = int(keys[pygame.K_DOWN]) - int(keys[pygame.K_UP])
+        self.direction = self.direction.normalize() if self.direction else self.direction
+        self.rect.center += self.direction * self.speed * dt
+
+        if self.direction.x == int(keys[pygame.K_RIGHT]):
+            self.image = pygame.image.load('images/jerryharpoon-r.png')
+        elif self.direction.x == int(keys[pygame.K_LEFT]):
+            self.image = pygame.image.load('images/jerryharpoon-l.png')
+
+        #recent_keys = pygame.key.get_just_pressed()
+        #if recent_keys[pygame.K_SPACE] and self.can_shoot:
+        #    Harpoon(harpoon_surf, self.rect.midtop, (all_sprites, harpoon_sprites))
+        #    self.can_shoot = False
+        #    self.laser_shoot_time = pygame.time.get_ticks()
+
+class Harpoon(pygame.sprite.Sprite):
+    def __init__(self, surf, pos, groups):
+        super().__init__(groups)
+        self.image = surf
+        self.rect = self.image.get_frect(midbottom = pos)
+    def update(self, dt):
+        self.rect.centery -= 500 * dt
+        if self.rect.bottom < 0:
+            self.kill()
+
+pygame.init()
+WINDOW_WIDTH, WINDOW_HEIGHT = 1280, 720
+display_surface = pygame.display.set_mode((WINDOW_WIDTH, WINDOW_HEIGHT))
+background = pygame.image.load("images/background.jpeg")
+running = True
+clock = pygame.time.Clock()
+
 player_surf = pygame.image.load('images/jerryharpoon.png')
+all_sprites = pygame.sprite.Group()
+player = Player(all_sprites)
 
 while running:
+
+    dt = clock.tick()/1000
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
             running = False
-    display_surface.fill('blue')
+    all_sprites.update(dt)
+
+    display_surface.blit(background, (0, 0))
+    all_sprites.draw(display_surface)
+
+    pygame.display.update()
 
 pygame.quit()

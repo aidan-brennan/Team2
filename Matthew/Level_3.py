@@ -12,83 +12,185 @@ pygame.display.set_caption("Fight the Pirate Crew")
 
 clock = pygame.time.Clock()
 
-# Images
-background = pygame.image.load(join("images","shipwreck.png")).convert()
-background = pygame.transform.scale(background,(WIDTH,HEIGHT))
 
-diver = pygame.image.load(join("images","jerryharpoon.png")).convert_alpha()
-shark = pygame.image.load(join("images","jerryharpoon.png")).convert_alpha()
+# ---------------- IMAGES ----------------
 
-diver = pygame.transform.scale(diver,(80,120))
-shark = pygame.transform.scale(shark,(100,90))
+background = pygame.image.load(join("images", "shipwreck.png")).convert()
+background = pygame.transform.scale(background, (WIDTH, HEIGHT))
 
-# Positions
-diver_x = 250
-diver_y = 250
+diver_image = pygame.image.load(join("images", "walking_jerry.png")).convert_alpha()
+pirate = pygame.image.load(join("images", "pirate.png")).convert_alpha()
 
-shark_x = 20
-shark_y = 270
+diver_image = pygame.transform.scale(diver_image, (85, 110))
+pirate = pygame.transform.scale(pirate, (150, 120))
 
-velocity = 0
-gravity = 0.6
-jump = -10
+
+# ---------------- PLAYER CLASS ----------------
+
+class Player:
+
+    def __init__(self, x, y):
+        self.x = x
+        self.y = y
+
+        self.width = 80
+        self.height = 120
+
+        self.speed = 5
+
+        self.image = diver_image
+
+    def move(self):
+        keys = pygame.key.get_pressed()
+
+        # Arrow key movement
+        if keys[pygame.K_LEFT]:
+            self.x -= self.speed
+
+        if keys[pygame.K_RIGHT]:
+            self.x += self.speed
+
+        if keys[pygame.K_UP]:
+            self.y -= self.speed
+
+        if keys[pygame.K_DOWN]:
+            self.y += self.speed
+
+        # Stop player leaving the screen
+        if self.x < 0:
+            self.x = 0
+
+        if self.x > WIDTH - self.width:
+            self.x = WIDTH - self.width
+
+        if self.y < 0:
+            self.y = 0
+
+        if self.y > HEIGHT - self.height:
+            self.y = HEIGHT - self.height
+
+    def draw(self):
+        screen.blit(self.image, (self.x, self.y))
+
+    def get_rect(self):
+        return pygame.Rect(self.x, self.y, self.width, self.height)
+
+
+#-----------------PIRATE CLASS-------------------
+class Pirate:
+
+    def __init__(self, x, y):
+        self.x = x
+        self.y = y
+
+        self.width = 100
+        self.height = 90
+
+        self.speed = 3
+
+        self.image = pirate
+
+    def move(self):
+        self.x -= self.speed
+
+    def draw(self):
+        screen.blit(self.image, (self.x, self.y))
+
+    def get_rect(self):
+        return pygame.Rect(
+            self.x,
+            self.y,
+            self.width,
+            self.height
+        )
+# ---------------- CREATE PLAYER ----------------
+
+player = Player(250, 250)
+lives = 3
+
+#-----------------invincibility_timer
+invincibility_timer = 0
+
+
+# ---------------- SHARK ----------------
+sharks = []
+
+pirate_x = 20
+pirate_y = 270
+
+
+# ---------------- GAME VARIABLES ----------------
 
 score = 0
 
 running = True
 
-list1=[]
-#for a in range(3):
-    #list1.append()
+
+# ---------------- GAME LOOP ----------------
 
 while running:
 
     clock.tick(60)
 
+    # Events
     for event in pygame.event.get():
+
         if event.type == pygame.QUIT:
             running = False
 
-        if event.type == pygame.KEYDOWN:
-            if event.key == pygame.K_SPACE:
-                velocity = jump
 
-    velocity += gravity
-    diver_y += velocity
-
-    if diver_y < 0:
-        diver_y = 0
-
-    if diver_y > HEIGHT-120:
-        diver_y = HEIGHT-120
-
-    # Shark slowly speeds up
-    if shark_x < WIDTH:
-        shark_x += 1
-    if shark_x == WIDTH:
-        shark_x==0
-
-    
-    
+    # Player movement
+    player.move()
 
 
-    screen.blit(background,(0,0))
-    screen.blit(shark,(shark_x,shark_y))
-    screen.blit(diver,(diver_x,diver_y))
+    # Shark slowly moves across the screen
+    if pirate_x < WIDTH:
+        pirate_x += 1
 
-    # Collision
-    diver_rect = pygame.Rect(diver_x,diver_y,70,110)
-    shark_rect = pygame.Rect(shark_x+40,shark_y+10,120,60)
+    if pirate_x >= WIDTH:
+        pirate_x = 0
 
-    if diver_rect.colliderect(shark_rect):
+
+    # ---------------- DRAW ----------------
+
+    screen.blit(background, (0, 0))
+
+    screen.blit(pirate, (pirate_x, pirate_y))
+
+    player.draw()
+
+
+    # ---------------- COLLISION ----------------
+
+    player_rect = player.get_rect()
+
+    pirate_rect = pygame.Rect(
+        pirate_x + 40,
+        pirate_y + 10,
+        60,
+        60
+    )
+
+    if player_rect.colliderect(pirate_rect):
         running = False
+
+
+    # ---------------- SCORE ----------------
 
     score += 1
 
-    font = pygame.font.SysFont(None,40)
-    text = font.render("Distance: "+str(score//10),True,(255,255,255))
-    screen.blit(text,(20,20))
+    font = pygame.font.SysFont(None, 40)
+
+    text = font.render(
+        "Distance: " + str(score // 10),
+        True,
+        (255, 255, 255)
+    )
+
+    screen.blit(text, (20, 20))
+
 
     pygame.display.flip()
+
 
 pygame.quit()

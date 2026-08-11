@@ -19,10 +19,10 @@ background = pygame.image.load(join("images", "shipwreck.png")).convert()
 background = pygame.transform.scale(background, (WIDTH, HEIGHT))
 
 diver_image = pygame.image.load(join("images", "walking_jerry.png")).convert_alpha()
-pirate = pygame.image.load(join("images", "pirate.png")).convert_alpha()
+pirate_image = pygame.image.load(join("images", "pirate.png")).convert_alpha()
 
 diver_image = pygame.transform.scale(diver_image, (85, 110))
-pirate = pygame.transform.scale(pirate, (150, 120))
+pirate_image = pygame.transform.scale(pirate_image, (150, 120))
 
 
 # ---------------- PLAYER CLASS ----------------
@@ -88,7 +88,7 @@ class Pirate:
 
         self.speed = 3
 
-        self.image = pirate
+        self.image = pirate_image
 
     def move(self):
         self.x -= self.speed
@@ -113,7 +113,7 @@ invincibility_timer = 0
 
 
 # ---------------- SHARK ----------------
-sharks = []
+pirates = []
 
 pirate_x = 20
 pirate_y = 270
@@ -125,7 +125,14 @@ score = 0
 
 running = True
 
+#-----------------WAVE-----------------------
+wave = 1
+wave = 1
+pirate_in_wave = 3
+pirate_spawned = 0
 
+spawn_timer = 0
+spawn_delay = 120
 # ---------------- GAME LOOP ----------------
 
 while running:
@@ -143,19 +150,74 @@ while running:
     player.move()
 
 
-    # Shark slowly moves across the screen
-    if pirate_x < WIDTH:
-        pirate_x += 1
+    # pirate slowly moves across the screen
+    spawn_timer += 1
 
-    if pirate_x >= WIDTH:
-        pirate_x = 0
+    # Spawn a new pirate
+    if spawn_timer >= spawn_delay and pirate_spawned < pirate_in_wave:
+
+        spawn_timer = 0
+
+        # Random height for shark
+        pirate_y = random.randint(100, HEIGHT - 150)
+
+        new_pirate = Pirate(WIDTH, pirate_y)
+
+        pirates.append(new_pirate)
+
+        pirate_spawned += 1
+
+
+    # Move all pirtaes
+    for pirate_enemy in pirates:
+        pirate_enemy.move()
+
+
+    # Remove pirates that have gone off screen
+    for pirate_enemy in pirates[:]:
+
+        if pirate_enemy.x < -100:
+            pirates.remove(pirate_enemy)
+
+
+    # Start next wave when all sharks are gone
+    if pirate_spawned == pirate_in_wave and len(pirates) == 0:
+
+        wave += 1
+
+        pirate_in_wave += 1
+
+        pirate_spawned = 0
+
+        spawn_timer = 0
+
+    #---------pirate collision---------
+    if invincibility_timer > 0:
+        invincibility_timer -= 1
+
+
+    for pirate_enemy in pirates[:]:
+
+        if player.get_rect().colliderect(pirate_enemy.get_rect()):
+
+            if invincibility_timer == 0:
+
+                lives -= 1
+                invincibility_timer = 120
+
+                pirates.remove(pirate_enemy)
+
+                if lives <= 0:
+                    running = False
+
 
 
     # ---------------- DRAW ----------------
 
     screen.blit(background, (0, 0))
 
-    screen.blit(pirate, (pirate_x, pirate_y))
+    for pirate_enemy in pirates:
+        pirate_enemy.draw()
 
     player.draw()
 
@@ -188,6 +250,22 @@ while running:
     )
 
     screen.blit(text, (20, 20))
+
+    lives_text = font.render(
+        "Lives: " + str(lives),
+        True,
+        (255, 255, 255)
+    )
+
+    screen.blit(lives_text, (20, 60))
+
+    wave_text = font.render(
+        "Wave: " + str(wave),
+        True,
+        (255, 255, 255)
+    )
+
+    screen.blit(wave_text, (20, 100))
 
 
     pygame.display.flip()

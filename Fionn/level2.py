@@ -11,16 +11,16 @@ HEIGHT = 600
 screen = pygame.display.set_mode((WIDTH, HEIGHT))
 pygame.display.set_caption("Escape the Shark")
  
-Gravity = 0.3
-Swim_strength = -6
-Max_fall_speed = 8
+Gravity = 0.2
+Swim_strength = -7
+Max_fall_speed = 6
  
 diver_x = 80
 diver_radius = 16         
-diver_size = (90, 70)       
+diver_size = (95, 75)       
  
 tentacle_width = 110
-tentacle_gap = 150
+tentacle_gap = 120
 tentacle_speed = 3
 tentacle_spawn_ms = random.randint(1500,2000)
 tentacle_hitbox_inset = 70   
@@ -42,6 +42,9 @@ jerry = pygame.image.load('images/jerryharpoon.png')
 jerry = pygame.transform.smoothscale(jerry, diver_size)  
 jerry = pygame.transform.rotate(jerry, angle=270)
 jerry = pygame.transform.flip(jerry, False, True)
+
+
+
  
 clock = pygame.time.Clock()
 font_big = pygame.font.SysFont(None, 64)
@@ -140,6 +143,8 @@ def main():
     started = False
  
     last_tentacle_time = pygame.time.get_ticks()
+
+
  
     running = True
  

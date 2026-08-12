@@ -399,60 +399,16 @@ function drawArtJelly(cvs) {
   }
 }
 
-// ── About canvas (animated pixel diver scene) ─────────────────────────────────
+// ── About diver image ─────────────────────────────────────────────────────────
 function drawAboutCanvas() {
   const cvs = document.getElementById("aboutCanvas");
   if (!cvs) return;
-  const c = cvs.getContext("2d");
-  const w = cvs.width, h = cvs.height;
-  let af = 0;
-
-  const abBubbles = Array.from({length:10},()=>({
-    x: 30+Math.random()*260, y: 80+Math.random()*200,
-    vy: 0.3+Math.random()*0.5, phase: Math.random()*Math.PI*2,
-  }));
-
-  function abRender() {
-    c.clearRect(0,0,w,h);
-    // Background
-    const g = c.createLinearGradient(0,0,0,h);
-    g.addColorStop(0,"#001828"); g.addColorStop(1,"#000c14");
-    c.fillStyle=g; c.fillRect(0,0,w,h);
-
-    // Light rays
-    for(let r=0;r<3;r++){
-      c.save(); c.globalAlpha=0.06+Math.sin(af*0.02+r)*0.02;
-      c.fillStyle="#00aaff";
-      c.beginPath(); c.moveTo(60+r*80,0); c.lineTo(20+r*80,h); c.lineTo(50+r*80,h);
-      c.lineTo(90+r*80,0); c.fill(); c.restore();
-    }
-
-    // Bubbles
-    abBubbles.forEach(b=>{
-      b.y -= b.vy; b.x += Math.sin(af*0.05+b.phase)*0.4;
-      if(b.y<10){b.y=h-20;b.x=30+Math.random()*260;}
-      c.strokeStyle="rgba(160,220,255,0.5)"; c.lineWidth=1;
-      c.beginPath(); c.arc(b.x,b.y,3,0,Math.PI*2); c.stroke();
-    });
-
-    // Diver
-    const dx=w/2, dy=h/2+Math.sin(af*0.04)*8;
-    c.fillStyle="#1a6fa8"; c.beginPath(); c.roundRect(dx-18,dy-16,36,48,8); c.fill();
-    c.fillStyle="#aaa"; c.beginPath(); c.roundRect(dx+14,dy-12,10,40,3); c.fill();
-    c.fillStyle="#1a6fa8"; c.beginPath(); c.arc(dx,dy-22,16,0,Math.PI*2); c.fill();
-    c.fillStyle="#88ddff"; c.beginPath(); c.ellipse(dx-2,dy-24,11,9,0,0,Math.PI*2); c.fill();
-    c.fillStyle="#e8a020";
-    c.beginPath(); c.ellipse(dx-14,dy+34,14,6,0.3,0,Math.PI*2); c.fill();
-    c.beginPath(); c.ellipse(dx+12,dy+34,14,6,-0.3,0,Math.PI*2); c.fill();
-    // Harpoon
-    c.fillStyle="#334"; c.beginPath(); c.roundRect(dx+18,dy+2,28,6,2); c.fill();
-    c.fillStyle="#ff6600";
-    c.beginPath(); c.moveTo(dx+46,dy+5); c.lineTo(dx+40,dy+1); c.lineTo(dx+40,dy+9); c.fill();
-
-    af++;
-    requestAnimationFrame(abRender);
-  }
-  abRender();
+  // Replace the canvas with an img tag showing jerryharpoon-r.png
+  const img = document.createElement("img");
+  img.src = "jerryharpoon-r.png";
+  img.alt = "Diver with harpoon";
+  img.style.cssText = "width:100%;height:100%;object-fit:contain;image-rendering:pixelated;";
+  cvs.replaceWith(img);
 }
 
 // ── Init ──────────────────────────────────────────────────────────────────────

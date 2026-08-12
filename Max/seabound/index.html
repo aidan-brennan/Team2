@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Sea Bound</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Rajdhani:wght@400;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+  <!-- ── NAV ──────────────────────────────────────────────────────────────── -->
+  <header id="navbar">
+    <div class="nav-inner">
+
+      <!-- Logo -->
+      <a href="#home" class="nav-logo" data-page="home">
+        <span class="logo-word">SEA</span>
+        <span class="logo-anchor" aria-hidden="true">&#9875;</span>
+        <span class="logo-word">BOUND</span>
+      </a>
+
+      <!-- Hamburger (mobile) -->
+      <button class="hamburger" id="hamburger" aria-label="Open menu">
+        <span></span><span></span><span></span>
+      </button>
+
+      <!-- Links -->
+      <nav class="nav-links" id="navLinks">
+        <a href="#home"    class="nav-link active" data-page="home">Home</a>
+        <a href="#about"   class="nav-link" data-page="about">About</a>
+        <a href="#levels"  class="nav-link" data-page="levels">Levels</a>
+        <a href="#artwork" class="nav-link" data-page="artwork">Artwork</a>
+        <a href="#social"  class="nav-link" data-page="social">Social</a>
+        <a href="#contact" class="nav-link" data-page="contact">Contact</a>
+        <a href="#play" class="nav-cta" data-page="play">&#9654; Play Now</a>
+      </nav>
+
+    </div>
+  </header>
+
+  <!-- ── PAGES ─────────────────────────────────────────────────────────────── -->
+  <main>
+
+    <!-- HOME ---------------------------------------------------------------- -->
+    <section id="home" class="page active">
+
+      <!-- Hero image -->
+      <div class="hero-wrap">
+        <div class="hero-overlay">
+          <h1 class="hero-title">
+            <span>SEA</span>
+            <span class="anchor-big" aria-hidden="true">&#9875;</span>
+            <span>BOUND</span>
+          </h1>
+          <p class="hero-sub">Dive into the deep. Survive what lurks below.</p>
+          <div class="hero-btns">
+            <a href="#play" class="btn btn-primary" data-page="play">&#9654; Play Now</a>
+            <a href="#about" class="btn btn-outline" data-page="about">Learn More</a>
+          </div>
+        </div>
+      </div>
+
+      <!-- Feature cards -->
+      <div class="section-wrap">
+        <h2 class="section-title pixel">FEATURES</h2>
+        <div class="card-grid">
+          <div class="card">
+            <div class="card-icon">&#128308;</div>
+            <h3>Survive the Deep</h3>
+            <p>Battle sharks, jellyfish and the legendary Kraken across 12 hand-crafted levels of increasing terror.</p>
+          </div>
+          <div class="card">
+            <div class="card-icon">&#128247;</div>
+            <h3>Harpoon Combat</h3>
+            <p>Aim your harpoon gun with precision. One shot can mean the difference between life and the abyss.</p>
+          </div>
+          <div class="card">
+            <div class="card-icon">&#127754;</div>
+            <h3>Pixel Ocean World</h3>
+            <p>A hand-pixelled underwater universe full of secrets, sunken ships and coral gardens to explore.</p>
+          </div>
+          <div class="card">
+            <div class="card-icon">&#9651;</div>
+            <h3>Level Up Your Gear</h3>
+            <p>Unlock oxygen tanks, faster fins, explosive harpoons and a dive cage as you progress.</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Stats bar -->
+      <div class="stats-bar">
+        <div class="stat"><span class="stat-num">12</span><span class="stat-label">Levels</span></div>
+        <div class="stat-div"></div>
+        <div class="stat"><span class="stat-num">6</span><span class="stat-label">Enemy Types</span></div>
+        <div class="stat-div"></div>
+        <div class="stat"><span class="stat-num">1</span><span class="stat-label">Kraken Boss</span></div>
+        <div class="stat-div"></div>
+        <div class="stat"><span class="stat-num">&#8734;</span><span class="stat-label">Danger</span></div>
+      </div>
+
+    </section>
+
+    <!-- ABOUT --------------------------------------------------------------- -->
+    <section id="about" class="page">
+      <div class="section-wrap">
+        <h2 class="section-title pixel">ABOUT</h2>
+        <div class="about-grid">
+          <div class="about-text">
+            <h3 class="pixel small">THE GAME</h3>
+            <p>Sea Bound is a pixel-art action game where you play as a deep-sea diver dropped from a research vessel into the most dangerous waters on Earth. Armed only with a harpoon gun and your wits, you must fend off predators, collect samples and escape before your oxygen runs out.</p>
+            <p>Built with a love for retro aesthetics and modern game-feel, Sea Bound blends chunky pixel art with fluid controls and a pulse-pounding original soundtrack.</p>
+            <h3 class="pixel small" style="margin-top:2rem;">THE TEAM</h3>
+            <p>Sea Bound is an indie project developed by a small team of ocean enthusiasts, pixel artists and weekend coders who believe the sea should be as terrifying in a game as it is in real life.</p>
+          </div>
+          <div class="about-panel">
+            <div class="pixel-box">
+              <canvas id="aboutCanvas" width="320" height="320"></canvas>
+            </div>
+            <div class="tag-list">
+              <span class="tag">Pixel Art</span>
+              <span class="tag">Action</span>
+              <span class="tag">Survival</span>
+              <span class="tag">Underwater</span>
+              <span class="tag">Boss Fights</span>
+              <span class="tag">Indie</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- LEVELS -------------------------------------------------------------- -->
+    <section id="levels" class="page">
+      <div class="section-wrap">
+        <h2 class="section-title pixel">LEVELS</h2>
+        <p class="section-sub">12 depths. Each darker than the last.</p>
+        <div class="levels-grid" id="levelsGrid"></div>
+      </div>
+    </section>
+
+    <!-- ARTWORK ------------------------------------------------------------- -->
+    <section id="artwork" class="page">
+      <div class="section-wrap">
+        <h2 class="section-title pixel">ARTWORK</h2>
+        <p class="section-sub">Pixel art from the depths of Sea Bound.</p>
+        <div class="art-grid" id="artGrid"></div>
+      </div>
+    </section>
+
+    <!-- SOCIAL -------------------------------------------------------------- -->
+    <section id="social" class="page">
+      <div class="section-wrap">
+        <h2 class="section-title pixel">SOCIAL</h2>
+        <p class="section-sub">Follow the dive. Stay updated.</p>
+        <div class="social-grid">
+          <a href="#" class="social-card" style="--accent:#1da1f2">
+            <div class="social-icon">&#120143;</div>
+            <h3>Twitter / X</h3>
+            <p>@SeaBoundGame</p>
+            <span class="social-follow">Follow</span>
+          </a>
+          <a href="#" class="social-card" style="--accent:#e1306c">
+            <div class="social-icon">&#128247;</div>
+            <h3>Instagram</h3>
+            <p>@seabound.game</p>
+            <span class="social-follow">Follow</span>
+          </a>
+          <a href="#" class="social-card" style="--accent:#5865f2">
+            <div class="social-icon">&#127918;</div>
+            <h3>Discord</h3>
+            <p>Join the Crew</p>
+            <span class="social-follow">Join</span>
+          </a>
+          <a href="#" class="social-card" style="--accent:#ff0000">
+            <div class="social-icon">&#9654;</div>
+            <h3>YouTube</h3>
+            <p>Sea Bound Official</p>
+            <span class="social-follow">Subscribe</span>
+          </a>
+          <a href="#" class="social-card" style="--accent:#ff6314">
+            <div class="social-icon">&#127918;</div>
+            <h3>itch.io</h3>
+            <p>Play the Demo</p>
+            <span class="social-follow">Play Free</span>
+          </a>
+          <a href="#" class="social-card" style="--accent:#1b9e3e">
+            <div class="social-icon">&#127918;</div>
+            <h3>Steam</h3>
+            <p>Wishlist Now</p>
+            <span class="social-follow">Wishlist</span>
+          </a>
+        </div>
+      </div>
+    </section>
+
+    <!-- PLAY ---------------------------------------------------------------- -->
+    <section id="play" class="page">
+      <div class="play-wrap">
+
+        <!-- Header bar -->
+        <div class="play-header">
+          <div class="play-title">
+            <span class="pixel">SEA &#9875; BOUND</span>
+            <span class="play-sub">Scuba Fighter</span>
+          </div>
+          <button class="btn btn-outline play-back" data-page="home">&#8592; Back</button>
+        </div>
+
+        <!-- Canvas area -->
+        <div class="game-frame">
+          <canvas id="gameCanvas"></canvas>
+        </div>
+
+        <!-- Controls reference -->
+        <div class="play-controls">
+          <div class="ctrl-item"><kbd>W A S D</kbd><span>or</span><kbd>&#8593; &#8592; &#8595; &#8594;</kbd><span>Move diver</span></div>
+          <div class="ctrl-sep"></div>
+          <div class="ctrl-item"><kbd>Click</kbd><span>or</span><kbd>Space</kbd><span>Fire harpoon</span></div>
+          <div class="ctrl-sep"></div>
+          <div class="ctrl-item"><span class="ctrl-tip">&#9888; Arrow keys scroll the page — click the game canvas first to focus it</span></div>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- CONTACT ------------------------------------------------------------- -->
+    <section id="contact" class="page">
+      <div class="section-wrap">
+        <h2 class="section-title pixel">CONTACT</h2>
+        <p class="section-sub">Send a message into the deep. We will surface shortly.</p>
+        <div class="contact-wrap">
+          <form class="contact-form" id="contactForm" onsubmit="handleSubmit(event)">
+            <div class="form-row">
+              <div class="form-group">
+                <label for="fname">Name</label>
+                <input type="text" id="fname" placeholder="Your name" required />
+              </div>
+              <div class="form-group">
+                <label for="femail">Email</label>
+                <input type="email" id="femail" placeholder="your@email.com" required />
+              </div>
+            </div>
+            <div class="form-group">
+              <label for="fsubject">Subject</label>
+              <input type="text" id="fsubject" placeholder="What's on your mind?" required />
+            </div>
+            <div class="form-group">
+              <label for="fmessage">Message</label>
+              <textarea id="fmessage" rows="6" placeholder="Dive in..." required></textarea>
+            </div>
+            <button type="submit" class="btn btn-primary full-width">Send Message &#9658;</button>
+            <p class="form-success" id="formSuccess">&#10003; Message sent! We'll be in touch.</p>
+          </form>
+          <div class="contact-info">
+            <div class="info-block">
+              <span class="info-icon">&#9993;</span>
+              <div>
+                <strong>Email</strong>
+                <p>hello@seabound.game</p>
+              </div>
+            </div>
+            <div class="info-block">
+              <span class="info-icon">&#128205;</span>
+              <div>
+                <strong>Based In</strong>
+                <p>Somewhere beneath the waves</p>
+              </div>
+            </div>
+            <div class="info-block">
+              <span class="info-icon">&#128336;</span>
+              <div>
+                <strong>Response Time</strong>
+                <p>Within 2 tidal cycles</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- FOOTER -->
+  <footer>
+    <div class="footer-inner">
+      <span class="nav-logo small">SEA <span class="logo-anchor">&#9875;</span> BOUND</span>
+      <p>&copy; 2026 Sea Bound. All rights reserved.</p>
+      <div class="footer-links">
+        <a href="#home" data-page="home">Home</a>
+        <a href="#about" data-page="about">About</a>
+        <a href="#contact" data-page="contact">Contact</a>
+      </div>
+    </div>
+  </footer>
+
+  <script src="game.js"></script>
+  <script src="site.js"></script>
+</body>
+</html>

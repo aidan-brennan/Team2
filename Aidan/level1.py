@@ -24,45 +24,198 @@ def load_or_placeholder(path, placeholder_maker, alpha=True):
         return placeholder_maker()
 
 def make_player_surface():
-    surf = pygame.Surface((70, 40), pygame.SRCALPHA)
-    pygame.draw.polygon(surf, (250, 200, 60), [(0, 20), (45, 4), (45, 36)])
-    pygame.draw.polygon(surf, (240, 140, 40), [(45, 12), (70, 20), (45, 28)])
-    pygame.draw.circle(surf, (20, 20, 20), (18, 18), 3)
+    """
+    Diver with a wetsuit body, swim fins, face mask, and a harpoon gun barrel.
+    Faces LEFT by default (the code flips it for right-facing).
+    Canvas: 90 x 54
+    """
+    W, H = 90, 54
+    surf = pygame.Surface((W, H), pygame.SRCALPHA)
+
+    # --- body (wetsuit, dark teal-blue) ---
+    body_pts = [(10, 27), (20, 12), (55, 10), (65, 18), (65, 36), (55, 44), (20, 42)]
+    pygame.draw.polygon(surf, (30, 80, 100),  body_pts)
+    pygame.draw.polygon(surf, (20, 55, 75),   body_pts, 2)
+
+    # --- wetsuit stripe (yellow accent down the side) ---
+    stripe_pts = [(22, 14), (52, 12), (52, 20), (22, 22)]
+    pygame.draw.polygon(surf, (220, 190, 50), stripe_pts)
+
+    # --- head / helmet ---
+    pygame.draw.circle(surf, (45, 110, 130),  (18, 27), 12)   # helmet shell
+    pygame.draw.circle(surf, (15, 50,  70),   (18, 27), 10)   # dark visor base
+    pygame.draw.ellipse(surf, (100, 200, 230, 160), (10, 20, 14, 14))  # visor glass
+
+    # --- oxygen tank on back ---
+    pygame.draw.ellipse(surf, (180, 180, 200), (56, 14, 12, 26))
+    pygame.draw.ellipse(surf, (140, 140, 160), (56, 14, 12, 26), 1)
+    pygame.draw.line(surf, (160, 160, 180), (62, 14), (62,  8), 2)   # regulator pipe
+
+    # --- swim fins (bottom) ---
+    fin_pts = [(10, 42), (28, 42), (24, 54), (4, 52)]
+    pygame.draw.polygon(surf, (50, 160, 140), fin_pts)
+    pygame.draw.polygon(surf, (30, 120, 110), fin_pts, 1)
+
+    # --- harpoon gun barrel ---
+    pygame.draw.rect(surf,  (90, 60, 30),  pygame.Rect(32, 22, 34, 7), border_radius=2)
+    pygame.draw.rect(surf,  (60, 40, 20),  pygame.Rect(32, 22, 34, 7), 1, border_radius=2)
+    # gun grip
+    pygame.draw.polygon(surf, (70, 45, 25), [(42, 29), (50, 29), (48, 36), (40, 36)])
+    # muzzle tip
+    pygame.draw.rect(surf, (200, 200, 215), pygame.Rect(64, 23, 8, 5), border_radius=1)
+
+    # --- bubble from regulator ---
+    pygame.draw.circle(surf, (200, 230, 255, 140), (65, 6), 3)
+    pygame.draw.circle(surf, (200, 230, 255, 90),  (70, 3), 2)
+
     return surf
+
 
 def make_harpoon_surface():
-    surf = pygame.Surface((40, 10), pygame.SRCALPHA)
-    pygame.draw.line(surf, (170, 130, 90), (0, 5), (32, 5), 3)
-    pygame.draw.polygon(surf, (200, 200, 210), [(32, 0), (40, 5), (32, 10)])
+    """Sleek harpoon bolt: wooden shaft + steel tip + flight vanes."""
+    W, H = 52, 14
+    surf = pygame.Surface((W, H), pygame.SRCALPHA)
+    # shaft
+    pygame.draw.rect(surf, (160, 110, 60), pygame.Rect(0, 5, 40, 4), border_radius=2)
+    pygame.draw.rect(surf, (130, 85,  40), pygame.Rect(0, 5, 40, 4), 1, border_radius=2)
+    # steel tip
+    pygame.draw.polygon(surf, (210, 215, 225), [(38, 2), (52, 7), (38, 12)])
+    pygame.draw.polygon(surf, (170, 175, 185), [(38, 2), (52, 7), (38, 12)], 1)
+    # vanes at tail
+    pygame.draw.polygon(surf, (200, 70, 50), [(0, 5), (8, 1), (8, 5)])
+    pygame.draw.polygon(surf, (200, 70, 50), [(0, 9), (8, 9), (8, 13)])
     return surf
+
 
 def make_shark_surface():
-    surf = pygame.Surface((100, 50), pygame.SRCALPHA)
-    pygame.draw.polygon(surf, (110, 120, 130), [(0, 25), (75, 5), (100, 25), (75, 45)])
-    pygame.draw.polygon(surf, (90, 100, 110), [(30, 5), (45, -12), (55, 5)])
-    pygame.draw.polygon(surf, (70, 80, 90), [(0, 25), (20, 15), (20, 35)])
-    pygame.draw.circle(surf, (250, 250, 250), (78, 18), 3)
+    """
+    Detailed shark: tapered body, dorsal + pectoral + caudal fins,
+    white belly, gill slits, eye with pupil, teeth hint.
+    Faces RIGHT. Canvas: 120 x 60
+    """
+    W, H = 120, 60
+    surf = pygame.Surface((W, H), pygame.SRCALPHA)
+
+    # --- main body ---
+    body_pts = [
+        (0, 30),          # snout tip
+        (15, 18), (50, 10), (85, 12),   # top edge
+        (110, 20),        # caudal peduncle top
+        (120, 12),        # tail top
+        (120, 48),        # tail bottom
+        (110, 40),        # caudal peduncle bottom
+        (85, 48), (50, 50), (15, 42),   # bottom edge
+        (8, 36),          # chin
+    ]
+    pygame.draw.polygon(surf, (100, 115, 130), body_pts)
+    pygame.draw.polygon(surf, (75,  88, 105),  body_pts, 2)
+
+    # --- white belly ---
+    belly_pts = [
+        (10, 32), (50, 40), (90, 38), (108, 32),
+        (90, 34), (50, 36), (10, 34),
+    ]
+    pygame.draw.polygon(surf, (230, 235, 240), belly_pts)
+
+    # --- dorsal fin ---
+    dorsal = [(55, 10), (68, -4), (80, 10)]
+    pygame.draw.polygon(surf, (80, 95, 112), dorsal)
+    pygame.draw.polygon(surf, (60, 75,  92), dorsal, 1)
+
+    # --- pectoral fin (side fin) ---
+    pec = [(35, 32), (25, 52), (55, 40)]
+    pygame.draw.polygon(surf, (85, 100, 118), pec)
+    pygame.draw.polygon(surf, (65,  80,  98), pec, 1)
+
+    # --- caudal (tail) fin ---
+    caudal_top    = [(108, 24), (120, 12), (115, 30)]
+    caudal_bottom = [(108, 36), (120, 48), (115, 30)]
+    pygame.draw.polygon(surf, (80, 95, 112), caudal_top)
+    pygame.draw.polygon(surf, (80, 95, 112), caudal_bottom)
+    pygame.draw.polygon(surf, (60, 75, 92),  caudal_top,    1)
+    pygame.draw.polygon(surf, (60, 75, 92),  caudal_bottom, 1)
+
+    # --- gill slits ---
+    for gx in [28, 33, 38]:
+        pygame.draw.arc(surf, (60, 72, 85),
+                        pygame.Rect(gx, 20, 4, 16), 0.2, pi - 0.2, 1)
+
+    # --- eye ---
+    pygame.draw.circle(surf, (240, 245, 250), (22, 22), 5)
+    pygame.draw.circle(surf, (15,  15,  20),  (23, 22), 3)   # pupil
+    pygame.draw.circle(surf, (255, 255, 255), (24, 21), 1)   # specular
+
+    # --- teeth hint at snout ---
+    for tx in [4, 8]:
+        pygame.draw.polygon(surf, (240, 242, 245),
+                            [(tx, 28), (tx + 3, 24), (tx + 6, 28)])
+
     return surf
 
+
 def make_jellyfish_surface():
-    """Procedural jellyfish: dome bell + dangling tentacles."""
-    w, h = 60, 80
-    surf = pygame.Surface((w, h), pygame.SRCALPHA)
-    # Bell (semi-circle dome)
-    bell_color  = (180, 100, 220, 200)
-    bell_rim    = (220, 160, 255, 220)
-    pygame.draw.ellipse(surf, bell_color, (4, 0, w - 8, 44))
-    pygame.draw.ellipse(surf, bell_rim,   (4, 0, w - 8, 44), 2)
-    # Highlight shimmer
-    pygame.draw.ellipse(surf, (240, 200, 255, 80), (12, 4, 18, 14))
-    # Tentacles
-    tentacle_color = (200, 120, 240, 160)
-    for i, tx in enumerate([10, 20, 30, 40, 50]):
-        wave_off = (i % 2) * 6
-        for seg in range(5):
-            sy = 38 + seg * 8 + wave_off
-            pygame.draw.circle(surf, tentacle_color, (tx, sy), 2)
-    return surf
+    """
+    High-quality jellyfish: smooth gradient-like bell with inner organs,
+    rim fringe, and thick tentacles. Canvas 72 x 96.
+    Animated version is built frame-by-frame in the Jellyfish class;
+    this function is only used as the loaded-image fallback placeholder.
+    """
+    return _build_jelly_frame(0.0)
+
+
+def _build_jelly_frame(pulse: float):
+    """
+    Draw one frame of the jellyfish bell.
+    pulse = 0.0 → fully relaxed (wide bell)
+    pulse = 1.0 → fully contracted (narrow, tall bell)
+    Returns a new Surface each call.
+    """
+    BASE_W, BASE_H = 72, 52   # bell only — tentacles drawn separately
+    squeeze = 1.0 - pulse * 0.22          # horizontal squeeze
+    stretch = 1.0 + pulse * 0.14          # vertical stretch
+
+    bw = max(10, round(BASE_W * squeeze))
+    bh = max(10, round(BASE_H * stretch))
+
+    # --- draw at fixed size then scale (cleaner curves) ---
+    bell = pygame.Surface((BASE_W, BASE_H + 4), pygame.SRCALPHA)
+
+    # outer bell — deep violet
+    pygame.draw.ellipse(bell, (120, 50, 180, 220),  (2, 2, BASE_W - 4, BASE_H - 2))
+    # mid layer — medium purple
+    pygame.draw.ellipse(bell, (160, 80, 220, 180),  (8, 4, BASE_W - 16, BASE_H - 10))
+    # inner glow — bright pink-purple
+    pygame.draw.ellipse(bell, (200, 120, 255, 130), (16, 6, BASE_W - 32, BASE_H - 20))
+    # specular highlight (top-left)
+    pygame.draw.ellipse(bell, (240, 210, 255, 90),  (14, 5, 20, 12))
+
+    # rim fringe dots
+    for i in range(9):
+        angle  = pi * i / 8
+        rx     = BASE_W // 2 + round((BASE_W // 2 - 4) * cos(angle))
+        ry     = BASE_H - 4  - round(4 * abs(sin(angle)))
+        radius = 3 if i % 2 == 0 else 2
+        pygame.draw.circle(bell, (220, 160, 255, 200), (rx, ry), radius)
+
+    # --- tentacle strip below bell ---
+    TENT_H   = 44
+    total_h  = BASE_H + TENT_H
+    full     = pygame.Surface((BASE_W, total_h), pygame.SRCALPHA)
+    full.blit(bell, (0, 0))
+
+    # draw 7 tentacles with sinusoidal sway baked in
+    cols = [8, 18, 28, 36, 44, 54, 64]
+    for ci, tx in enumerate(cols):
+        thickness = 2 if ci % 2 == 0 else 1
+        for seg in range(10):
+            sy1 = BASE_H + seg * (TENT_H // 10)
+            sy2 = BASE_H + (seg + 1) * (TENT_H // 10)
+            sway = round(sin(seg * 0.6 + ci * 0.9 + pulse * 3) * 4)
+            col  = (200, 100, 240, max(40, 200 - seg * 16))
+            pygame.draw.line(full, col, (tx + sway, sy1), (tx + sway, sy2), thickness)
+
+    # scale to pulse dimensions
+    return pygame.transform.smoothscale(full, (bw, round(total_h * stretch)))
 
 def make_mapfrag_surface():
     """Fallback if mapfrag1.png is missing."""
@@ -74,17 +227,86 @@ def make_mapfrag_surface():
     return surf
 
 def make_background_tile():
-    tile = pygame.Surface((WINDOW_WIDTH, WINDOW_HEIGHT))
-    top_color = pygame.Color(30, 110, 160)
-    bottom_color = pygame.Color(5, 40, 80)
-    for y in range(WINDOW_HEIGHT):
-        t = y / WINDOW_HEIGHT
-        color = top_color.lerp(bottom_color, t)
-        pygame.draw.line(tile, color, (0, y), (WINDOW_WIDTH, y))
-    for _ in range(25):
-        pos = (randint(0, WINDOW_WIDTH), randint(0, WINDOW_HEIGHT))
-        radius = randint(1, 3)
-        pygame.draw.circle(tile, (255, 255, 255, 40), pos, radius)
+    """
+    Rich underwater background:
+    - Deep gradient from sunlit surface teal to abyssal navy
+    - Caustic light rays fanning from top
+    - Scattered coral silhouettes at the bottom
+    - Fine particle dust / plankton dots
+    - Subtle dark-rock sea floor strip
+    """
+    W, H = WINDOW_WIDTH, WINDOW_HEIGHT
+    tile = pygame.Surface((W, H))
+
+    # --- base gradient ---
+    surf_color  = pygame.Color(20, 120, 160)
+    abyss_color = pygame.Color(4,  22,  55)
+    for y in range(H):
+        t = y / H
+        c = surf_color.lerp(abyss_color, t ** 1.6)   # accelerated darkening
+        pygame.draw.line(tile, c, (0, y), (W, y))
+
+    # --- caustic light shafts from top ---
+    ray_surf = pygame.Surface((W, H), pygame.SRCALPHA)
+    num_rays = 9
+    for i in range(num_rays):
+        cx  = int(W * (i + 0.5) / num_rays) + randint(-30, 30)
+        w_r = randint(30, 80)
+        pts = [
+            (cx - w_r // 2, 0),
+            (cx + w_r // 2, 0),
+            (cx + w_r * 2,  H // 2),
+            (cx - w_r * 2,  H // 2),
+        ]
+        alpha = randint(12, 26)
+        pygame.draw.polygon(ray_surf, (180, 230, 255, alpha), pts)
+    tile.blit(ray_surf, (0, 0))
+
+    # --- sea-floor strip ---
+    floor_y = int(H * 0.82)
+    for y in range(floor_y, H):
+        t    = (y - floor_y) / (H - floor_y)
+        dark = pygame.Color(12, 28, 18).lerp(pygame.Color(6, 14, 8), t)
+        pygame.draw.line(tile, dark, (0, y), (W, y))
+
+    # --- coral / rock silhouettes ---
+    coral_surf = pygame.Surface((W, H), pygame.SRCALPHA)
+    colors = [(160, 60, 50, 200), (140, 80, 30, 200), (80, 130, 60, 200)]
+    for _ in range(18):
+        bx    = randint(0, W)
+        by    = randint(floor_y - 10, floor_y + 20)
+        btype = randint(0, 2)
+        col   = colors[btype]
+        if btype == 0:   # branching coral
+            h_c = randint(30, 70)
+            pygame.draw.line(coral_surf, col, (bx, by), (bx, by - h_c), 3)
+            pygame.draw.line(coral_surf, col, (bx, by - h_c // 2),
+                             (bx - 10, by - h_c // 2 - 15), 2)
+            pygame.draw.line(coral_surf, col, (bx, by - h_c // 2),
+                             (bx + 10, by - h_c // 2 - 15), 2)
+        elif btype == 1: # boulder
+            r = randint(12, 28)
+            pygame.draw.ellipse(coral_surf, col, (bx - r, by - r // 2, r * 2, r))
+        else:            # seaweed stalk
+            h_s = randint(25, 55)
+            for seg in range(h_s // 5):
+                sx  = bx + round(sin(seg * 0.8) * 5)
+                sy1 = by - seg * 5
+                sy2 = by - (seg + 1) * 5
+                pygame.draw.line(coral_surf, col, (sx, sy1), (sx, sy2), 2)
+    tile.blit(coral_surf, (0, 0))
+
+    # --- plankton / dust particles ---
+    for _ in range(120):
+        px = randint(0, W)
+        py = randint(0, floor_y)
+        r  = randint(1, 3)
+        a  = randint(30, 100)
+        # draw onto a tiny alpha surface to get transparency
+        dot = pygame.Surface((r * 2, r * 2), pygame.SRCALPHA)
+        pygame.draw.circle(dot, (200, 235, 255, a), (r, r), r)
+        tile.blit(dot, (px - r, py - r))
+
     return tile.convert()
 
 def scale_surface(surf, factor):
@@ -101,16 +323,222 @@ player_surf = scale_surface(load_or_placeholder('images/jerryharpoon.png', make_
 _harpoon_raw = load_or_placeholder('images/harpoon.png', make_harpoon_surface)
 harpoon_surf = scale_surface(_harpoon_raw.subsurface(_harpoon_raw.get_bounding_rect()).copy(), HARPOON_SCALE)
 
-shark_surf = scale_surface(load_or_placeholder('images/shark1.png', make_shark_surface), SHARK_SCALE)
 
-boss_shark_surf = scale_surface(shark_surf, BOSS_EXTRA_SCALE).copy()
-_tint = pygame.Surface(boss_shark_surf.get_size(), pygame.SRCALPHA)
-_tint.fill((255, 110, 110, 255))
-boss_shark_surf.blit(_tint, (0, 0), special_flags=pygame.BLEND_RGBA_MULT)
+# ---------------------------------------------------------------------------
+# Shark surfaces — all variants use shark1.png
+#   Normal shark : original scale
+#   Boss shark   : scaled up + red tint
+#   The "frame arrays" are single-element lists so the animation code
+#   works without any other changes.
+# ---------------------------------------------------------------------------
+_shark1 = scale_surface(load_or_placeholder('images/shark1.png', make_shark_surface), SHARK_SCALE)
+
+# One swim frame + one attack frame — both the same image
+SHARK_SWIM_FRAMES   = [_shark1]
+SHARK_ATTACK_FRAMES = [_shark1]
+
+# Boss: scale up further and apply red tint
+_boss1 = scale_surface(_shark1, BOSS_EXTRA_SCALE).copy()
+_boss_tint = pygame.Surface(_boss1.get_size(), pygame.SRCALPHA)
+_boss_tint.fill((255, 110, 110, 255))
+_boss1.blit(_boss_tint, (0, 0), special_flags=pygame.BLEND_RGBA_MULT)
+
+BOSS_SWIM_FRAMES   = [_boss1]
+BOSS_ATTACK_FRAMES = [_boss1]
 
 background_surf = load_or_placeholder('images/background.jpeg', make_background_tile, alpha=False)
+# Scale the map to 1.5× the window so it's compact but still scrollable
+_MAP_SCALE = 1.5
+background_surf = pygame.transform.smoothscale(
+    background_surf,
+    (round(WINDOW_WIDTH * _MAP_SCALE), round(WINDOW_HEIGHT * _MAP_SCALE))
+).convert()
+# Dim the background so it reads as distant
+_bg_dim = pygame.Surface(background_surf.get_size(), pygame.SRCALPHA)
+_bg_dim.fill((0, 10, 30, 110))
+background_surf.blit(_bg_dim, (0, 0))
+
 bg_width, bg_height = background_surf.get_size()
 WORLD_BOUNDS = pygame.Rect(0, 0, bg_width, bg_height)
+
+# ---------------------------------------------------------------------------
+# Sea floor — rendered at the bottom of the world.
+# FLOOR_Y is the y-coordinate of the TOP of the floor (collision boundary).
+# Players, sharks and jellyfish are clamped so their bottom never crosses it.
+# ---------------------------------------------------------------------------
+# ---------------------------------------------------------------------------
+# Sea floor — rendered at the bottom of the world.
+# FLOOR_Y is the y-coordinate of the TOP of the floor (collision boundary).
+# Players, sharks and jellyfish are clamped so their bottom never crosses it.
+# ---------------------------------------------------------------------------
+FLOOR_THICKNESS = 90          # pixel height of the floor strip
+FLOOR_Y         = bg_height - FLOOR_THICKNESS   # collision top edge
+
+def _make_floor_surface():
+    """
+    Rich procedural sea floor:
+      - Sand gradient + ripple marks + grain noise (as before)
+      - Rock formations: large boulders with highlights/shadows, cracked surfaces
+      - Barnacle clusters on rocks
+      - Seaweed tufts growing between rocks
+      - Shells and small pebbles
+      - Shadow at water-edge
+    """
+    W, H = bg_width, FLOOR_THICKNESS
+    surf = pygame.Surface((W, H))
+
+    # ── sand gradient ────────────────────────────────────────────────────────
+    sand_top    = pygame.Color(195, 165,  90)
+    sand_mid    = pygame.Color(145, 115,  55)
+    sand_bottom = pygame.Color( 50,  38,  18)
+    for y in range(H):
+        t = y / (H - 1)
+        c = sand_top.lerp(sand_mid, min(1.0, t / 0.4)) if t < 0.4 \
+            else sand_mid.lerp(sand_bottom, (t - 0.4) / 0.6)
+        pygame.draw.line(surf, c, (0, y), (W, y))
+
+    # ── water-edge shadow ────────────────────────────────────────────────────
+    shadow_layer = pygame.Surface((W, H), pygame.SRCALPHA)
+    for y in range(18):
+        a = int(200 * (1 - y / 18))
+        shadow_layer.fill((0, 12, 35, a), (0, y, W, 1))
+    surf.blit(shadow_layer, (0, 0))
+
+    # ── sand ripple marks ────────────────────────────────────────────────────
+    ripple_layer = pygame.Surface((W, H), pygame.SRCALPHA)
+    for i in range(8):
+        yb = 12 + i * (H // 9)
+        for x in range(W):
+            ry = yb + round(sin(x * 0.022 + i * 1.4) * 5)
+            ripple_layer.fill((75, 55, 20, 100), (x, min(H-1, ry),   1, 2))
+            ripple_layer.fill((225, 198, 118, 60), (x, max(0, ry-1), 1, 1))
+    surf.blit(ripple_layer, (0, 0))
+
+    # ── fine grain noise ─────────────────────────────────────────────────────
+    grain_layer = pygame.Surface((W, H), pygame.SRCALPHA)
+    for _ in range(W * H // 5):
+        gx = randint(0, W - 1)
+        gy = randint(0, H - 1)
+        v, a = randint(-20, 20), randint(20, 65)
+        grain_layer.set_at((gx, gy), (max(0,180+v), max(0,148+v), max(0,66+v), a))
+    surf.blit(grain_layer, (0, 0))
+
+    # ── rocks ────────────────────────────────────────────────────────────────
+    # Pre-generate rock placements so barnacles/seaweed can reference them
+    rock_list = []  # (cx, cy, rx, ry, angle_deg)
+    num_rocks = randint(12, 18)
+    for _ in range(num_rocks):
+        rx_ = randint(18, 55)
+        ry_ = randint(12, 32)
+        cx  = randint(rx_, W - rx_)
+        cy  = randint(4, H - ry_ - 4)
+        ang = randint(-25, 25)
+        rock_list.append((cx, cy, rx_, ry_, ang))
+
+    rock_layer = pygame.Surface((W, H), pygame.SRCALPHA)
+    for (cx, cy, rx_, ry_, ang) in rock_list:
+        # Draw on a temp surface so we can rotate
+        rw, rh = rx_ * 2 + 6, ry_ * 2 + 6
+        tmp = pygame.Surface((rw, rh), pygame.SRCALPHA)
+        tc, tr = rw // 2, rh // 2
+
+        # Base rock body — dark grey-green stone
+        shade = randint(55, 85)
+        rock_col   = (shade,     shade - 8,  shade - 15, 255)
+        shadow_col = (shade - 20, shade - 28, shade - 32, 255)
+        hi_col     = (shade + 40, shade + 35, shade + 28, 200)
+
+        pygame.draw.ellipse(tmp, rock_col,   (3,     4,     rx_*2,   ry_*2))
+        # shadow underside
+        pygame.draw.ellipse(tmp, shadow_col, (3,     tr,    rx_*2,   ry_),  0)
+        pygame.draw.ellipse(tmp, rock_col,   (3,     4,     rx_*2,   ry_*2), 0)
+        # highlight top-left
+        hl_rect = (tc - rx_//2, tr - ry_//2, rx_ - 4, ry_ // 2)
+        if hl_rect[2] > 0 and hl_rect[3] > 0:
+            pygame.draw.ellipse(tmp, hi_col, hl_rect)
+        # crack lines
+        for _ in range(randint(1, 3)):
+            cx0 = randint(tc - rx_//2, tc + rx_//2)
+            cy0 = randint(tr - ry_//3, tr + ry_//3)
+            pygame.draw.line(tmp, shadow_col,
+                             (cx0, cy0),
+                             (cx0 + randint(-12, 12), cy0 + randint(-8, 8)), 1)
+        # dark outline
+        pygame.draw.ellipse(tmp, (30, 25, 18, 200), (3, 4, rx_*2, ry_*2), 2)
+
+        rotated = pygame.transform.rotate(tmp, ang)
+        rock_layer.blit(rotated, rotated.get_frect(center=(cx, cy)))
+
+    surf.blit(rock_layer, (0, 0))
+
+    # ── barnacle clusters on rocks ────────────────────────────────────────────
+    barnacle_layer = pygame.Surface((W, H), pygame.SRCALPHA)
+    for (cx, cy, rx_, ry_, _) in rock_list:
+        num_b = randint(3, 9)
+        for _ in range(num_b):
+            bx = cx + randint(-rx_ + 4, rx_ - 4)
+            by = cy + randint(-ry_ // 2, ry_ // 2)
+            br = randint(2, 5)
+            pygame.draw.circle(barnacle_layer, (140, 130, 100, 220), (bx, by), br)
+            pygame.draw.circle(barnacle_layer, (180, 168, 138, 150), (bx, by), br, 1)
+            # tiny hole
+            pygame.draw.circle(barnacle_layer, (40, 35, 25, 200), (bx, by), max(1, br - 2))
+    surf.blit(barnacle_layer, (0, 0))
+
+    # ── seaweed tufts between rocks ───────────────────────────────────────────
+    weed_layer = pygame.Surface((W, H), pygame.SRCALPHA)
+    for (cx, cy, rx_, ry_, _) in rock_list[::2]:  # every other rock
+        wx = cx + randint(-rx_, rx_)
+        wy = cy - ry_
+        stalks = randint(2, 5)
+        for s in range(stalks):
+            sx = wx + s * 5 - stalks * 2
+            stalk_h = randint(14, 30)
+            weed_col = (30 + randint(0,20), 110 + randint(0,30), 40 + randint(0,20), 200)
+            for seg in range(stalk_h // 4):
+                sway = round(sin(seg * 0.7 + s * 1.2) * 3)
+                sy1  = wy - seg * 4
+                sy2  = wy - (seg + 1) * 4
+                pygame.draw.line(weed_layer, weed_col,
+                                 (sx + sway, min(H, sy1)),
+                                 (sx + sway, min(H, sy2)), 2)
+    surf.blit(weed_layer, (0, 0))
+
+    # ── shells and small pebbles ──────────────────────────────────────────────
+    detail_layer = pygame.Surface((W, H), pygame.SRCALPHA)
+    for _ in range(80):
+        ox = randint(0, W)
+        oy = randint(6, H - 6)
+        kind = randint(0, 2)
+        if kind == 0:
+            # small pebble
+            rx2, ry2 = randint(3, 8), randint(2, 4)
+            sh = randint(110, 170)
+            pygame.draw.ellipse(detail_layer, (sh, sh-8, sh-18, 230),
+                                (ox-rx2, oy-ry2, rx2*2, ry2*2))
+            pygame.draw.ellipse(detail_layer, (sh+40, sh+32, sh+18, 120),
+                                (ox-rx2, oy-ry2, rx2*2, ry2*2), 1)
+        elif kind == 1:
+            # shell arc
+            r = randint(4, 9)
+            pygame.draw.arc(detail_layer, (215, 195, 145, 210),
+                            (ox-r, oy-r, r*2, r*2), 0.1, pi, 2)
+            pygame.draw.arc(detail_layer, (175, 150, 105, 160),
+                            (ox-r+2, oy-r+2, r, r), pi, 2*pi, 2)
+        else:
+            # stone chip
+            pts = [(ox, oy),
+                   (ox + randint(6,14), oy + randint(-3, 3)),
+                   (ox + randint(4,10), oy + randint(4, 8))]
+            pygame.draw.polygon(detail_layer, (195, 175, 118, 210), pts)
+    surf.blit(detail_layer, (0, 0))
+
+    return surf.convert()
+
+floor_surf = _make_floor_surface()
+
+# PLAY_BOUNDS — same as WORLD_BOUNDS but the bottom is the top of the floor
+PLAY_BOUNDS = pygame.Rect(0, 0, bg_width, FLOOR_Y)
 
 jellyfish_surf = scale_surface(load_or_placeholder('images/jellyfish.png', make_jellyfish_surface), 1.4)
 mapfrag_surf   = scale_surface(load_or_placeholder('images/mapfrag1.png',  make_mapfrag_surface),   1.0)
@@ -159,6 +587,9 @@ class CameraGroup(pygame.sprite.Group):
 
     def draw_all(self, target_pos):
         self.draw_background(target_pos)
+        # Draw the sea floor at the bottom of the world, scrolled with the camera
+        floor_screen_y = FLOOR_Y - self.offset.y
+        display_surface.blit(floor_surf, (int(-self.offset.x), int(floor_screen_y)))
         for sprite in self.sprites():
             offset_pos = pygame.Vector2(sprite.rect.topleft) - self.offset
             offset_pos.y += getattr(sprite, "bob_offset", 0)
@@ -305,7 +736,7 @@ class Player(pygame.sprite.Sprite):
         # apply recoil offset as a positional nudge (cosmetic only)
         recoil_vec = self.recoil_direction * self.recoil_offset if self.recoil_timer > 0 else pygame.Vector2()
         self.rect.center += self.direction * self.speed * dt + recoil_vec
-        self.rect.clamp_ip(WORLD_BOUNDS)
+        self.rect.clamp_ip(PLAY_BOUNDS)
         old_center = self.rect.center
 
         # pick base surface (flip for facing direction)
@@ -417,80 +848,271 @@ class TrailBubble(pygame.sprite.Sprite):
 
 
 # ---------------------------------------------------------------------------
-# Shark enemy  (enhanced: full tail-fin swim animation via body tilt + scale pulse)
+# Shark — sprite-sheet state machine  (normal + boss)
+#
+# Normal shark states:  SWIM → ATTACK → SWIM …
+# Boss states:          SWIM → ATTACK → SWIM  (+ periodic CHARGE and SUMMON)
+#
+# Boss extra mechanics
+#   CHARGE  – winds up then rockets across the screen; deals damage on contact
+#   SUMMON  – pauses and spawns 2-3 mini-sharks around itself
 # ---------------------------------------------------------------------------
 class Shark(pygame.sprite.Sprite):
-    def __init__(self, pos, groups, is_boss=False, speed_mult=1.0, health_bonus=0):
+    # ── normal attack tuning ──
+    SWIM_FPS        = 8
+    ATTACK_FPS      = 10
+    ATTACK_RANGE    = 160
+    ATTACK_COOLDOWN = 1.8
+    LUNGE_SPEED     = 420
+    BITE_FRAME      = 2        # frame index where bite damage is dealt
+
+    # ── boss-only tuning ──
+    CHARGE_COOLDOWN  = 5.0     # seconds between charge sequences
+    CHARGE_WINDUP    = 0.45    # seconds of wind-up telegraph
+    CHARGE_SPEED     = 1000     # px/s during each dash
+    CHARGE_DASH_DUR  = 0.38    # seconds each individual dash lasts
+    CHARGE_PAUSE_DUR = 0.18    # brief pause between back-and-forth dashes
+    CHARGE_PASSES    = 2       # how many back-and-forth passes per sequence
+    SUMMON_COOLDOWN  = 7.0
+    SUMMON_COUNT     = 3
+
+    STATE_SWIM   = "swim"
+    STATE_ATTACK = "attack"
+    STATE_CHARGE = "charge"    # boss only
+    STATE_SUMMON = "summon"    # boss only
+
+    def __init__(self, pos, groups, is_boss=False, speed_mult=1.0,
+                 health_bonus=0, is_minion=False):
         super().__init__(groups)
-        self.is_boss  = is_boss
-        self.base_surf = boss_shark_surf if is_boss else shark_surf
-        self.image     = self.base_surf
-        self.rect      = self.image.get_frect(center=pos)
-        self.pos       = pygame.Vector2(pos)
+        self.is_boss   = is_boss
+        self.is_minion = is_minion
+
+        self.swim_frames   = BOSS_SWIM_FRAMES   if is_boss else SHARK_SWIM_FRAMES
+        self.attack_frames = BOSS_ATTACK_FRAMES if is_boss else SHARK_ATTACK_FRAMES
+
+        self.pos = pygame.Vector2(pos)
 
         if is_boss:
-            self.speed     = uniform(70, 100) * speed_mult
+            self.speed      = uniform(70, 100) * speed_mult
             self.max_health = 10 + health_bonus * 3
+        elif is_minion:
+            self.speed      = uniform(130, 190) * speed_mult
+            self.max_health = 1
         else:
-            self.speed     = uniform(90, 160) * speed_mult
+            self.speed      = uniform(90, 160) * speed_mult
             self.max_health = 2 + health_bonus
-
         self.health = self.max_health
 
-        # Swim animation state
-        self.swim_cycle   = uniform(0, 2 * pi)    # random phase so sharks don't sync
-        self.swim_speed   = uniform(4.0, 6.5)     # tail-stroke frequency
-        self.tilt_amount  = uniform(9, 15)         # degrees of body rock
-        self.scale_pulse  = uniform(0.025, 0.045)  # subtle size breath
+        # ── animation ──
+        self.state       = self.STATE_SWIM
+        self.frame_idx   = 0
+        self.frame_timer = 0.0
 
-        # Wobble (lateral drift while chasing)
+        # ── normal attack ──
+        self.attack_cooldown  = 0.0
+        self._bit_this_attack = False
+
+        # ── boss: charge ──
+        self._charge_cd      = uniform(2.0, self.CHARGE_COOLDOWN)
+        self._charge_phase   = "idle"   # idle → windup → dash → pause → dash → … → done
+        self._charge_timer   = 0.0
+        self._charge_dir     = pygame.Vector2(1, 0)   # locked-in direction per dash
+        self._charge_hit     = False
+        self._charge_passes  = 0        # dashes completed so far
+        self._charge_forward = True     # True = toward player, False = back
+
+        # ── boss: summon ──
+        self._summon_cd      = uniform(6.0, self.SUMMON_COOLDOWN)
+
+        # ── movement ──
         self.wobble_timer  = uniform(0, 10)
         self.wobble_amount = uniform(20, 45)
         self.facing_right  = True
 
+        # ── visual ──
         self.bob_offset = 0.0
         self.bob_timer  = uniform(0, 10)
 
+        self.image = self.swim_frames[0]
+        self.rect  = self.image.get_frect(center=self.pos)
+
+    # ── helpers ──────────────────────────────────────────────────────────────
+    def _fps(self):
+        return self.ATTACK_FPS if self.state == self.STATE_ATTACK else self.SWIM_FPS
+
+    def _frames(self):
+        return self.attack_frames if self.state == self.STATE_ATTACK else self.swim_frames
+
+    def _get_frame(self):
+        raw = self._frames()[self.frame_idx % len(self._frames())]
+        return raw if self.facing_right else pygame.transform.flip(raw, True, False)
+
+    def _advance_frame(self, dt):
+        """Returns True when an ATTACK sequence finishes its last frame."""
+        self.frame_timer += dt
+        if self.frame_timer >= 1.0 / self._fps():
+            self.frame_timer -= 1.0 / self._fps()
+            self.frame_idx   += 1
+            total = len(self._frames())
+            if self.frame_idx >= total:
+                if self.state == self.STATE_ATTACK:
+                    self.frame_idx = 0
+                    return True
+                self.frame_idx = self.frame_idx % total
+        return False
+
+    def _facing_toward(self, vec):
+        if vec.x > 0:   self.facing_right = True
+        elif vec.x < 0: self.facing_right = False
+
+    # ── update ───────────────────────────────────────────────────────────────
     def update(self, dt):
-        self.swim_cycle  += dt * self.swim_speed
         self.wobble_timer += dt
-        self.bob_timer   += dt
+        self.bob_timer    += dt
 
-        # Chase player
         to_player = pygame.Vector2(player.rect.center) - self.pos
-        if to_player.length() > 0:
-            forward = to_player.normalize()
-        else:
-            forward = pygame.Vector2(1, 0)
+        dist      = to_player.length()
+        forward   = to_player.normalize() if dist > 0 else pygame.Vector2(1, 0)
+        self._facing_toward(forward)
 
-        perpendicular = pygame.Vector2(-forward.y, forward.x)
-        wobble = sin(self.wobble_timer * 2.2) * self.wobble_amount
+        # ── tick cooldowns ────────────────────────────────────────────────────
+        if self.attack_cooldown > 0:
+            self.attack_cooldown = max(0.0, self.attack_cooldown - dt)
 
-        self.pos += forward * self.speed * dt
-        self.pos += perpendicular * wobble * dt
+        # ── boss ability cooldowns ────────────────────────────────────────────
+        if self.is_boss and self.state == self.STATE_SWIM:
+            self._charge_cd -= dt
+            self._summon_cd -= dt
 
-        # Flip for direction
-        should_face_right = forward.x > 0
-        if should_face_right != self.facing_right:
-            self.facing_right = should_face_right
+            if self._summon_cd <= 0:
+                self._summon_cd = self.SUMMON_COOLDOWN
+                self._begin_summon()
 
-        base = self.base_surf if self.facing_right else pygame.transform.flip(self.base_surf, True, False)
+            elif self._charge_cd <= 0:
+                self._charge_cd      = self.CHARGE_COOLDOWN
+                self._charge_phase   = "windup"
+                self._charge_timer   = 0.0
+                self._charge_dir     = forward.copy()   # locked toward player at trigger
+                self._charge_hit     = False
+                self._charge_passes  = 0
+                self._charge_forward = True
+                self.state = self.STATE_CHARGE
 
-        # Body tilt swim animation
-        tilt = sin(self.swim_cycle) * self.tilt_amount
-        # Subtle scale pulse (breathe effect)
-        pulse = 1.0 + sin(self.swim_cycle * 0.5) * self.scale_pulse
-        w, h  = base.get_size()
-        scaled = pygame.transform.smoothscale(base, (max(1, round(w * pulse)), max(1, round(h * pulse))))
-        self.image = pygame.transform.rotate(scaled, tilt if self.facing_right else -tilt)
+        # ── state machine ─────────────────────────────────────────────────────
+        if self.state == self.STATE_SWIM:
+            # trigger normal attack when close
+            if dist < self.ATTACK_RANGE and self.attack_cooldown <= 0:
+                self.state            = self.STATE_ATTACK
+                self.frame_idx        = 0
+                self.frame_timer      = 0.0
+                self._bit_this_attack = False
+            else:
+                # swim toward player with wobble
+                perp   = pygame.Vector2(-forward.y, forward.x)
+                wobble = sin(self.wobble_timer * 2.2) * self.wobble_amount
+                self.pos += forward * self.speed * dt + perp * wobble * dt
 
-        # Bob offset for CameraGroup
+        elif self.state == self.STATE_ATTACK:
+            # lunge frame moves fast, other frames drift
+            move_speed = self.LUNGE_SPEED if self.frame_idx == 1 else self.speed * 0.25
+            self.pos += forward * move_speed * dt
+
+            # bite damage on bite frame (once per attack)
+            if (self.frame_idx == self.BITE_FRAME and not self._bit_this_attack
+                    and player.alive and not player.is_invincible()
+                    and self.rect.colliderect(player.hitbox)):
+                player.take_damage()
+                self._bit_this_attack = True
+
+            if self._advance_frame(dt):
+                self.state           = self.STATE_SWIM
+                self.attack_cooldown = self.ATTACK_COOLDOWN
+                self.frame_idx       = 0
+
+        elif self.state == self.STATE_CHARGE:
+            self._charge_timer += dt
+
+            if self._charge_phase == "windup":
+                # telegraph: slow drift, tilt back slightly
+                self.pos += forward * (self.speed * 0.1) * dt
+                if self._charge_timer >= self.CHARGE_WINDUP:
+                    self._charge_phase  = "dash"
+                    self._charge_timer  = 0.0
+                    self._charge_hit    = False
+                    # first dash is toward the player
+                    self._charge_dir    = forward.copy()
+                    self._charge_forward = True
+
+            elif self._charge_phase == "dash":
+                # rocket in the locked direction
+                self.pos += self._charge_dir * self.CHARGE_SPEED * dt
+
+                # deal damage once per dash
+                if not self._charge_hit and player.alive and not player.is_invincible():
+                    self.rect = self.image.get_frect(center=self.pos)
+                    if self.rect.colliderect(player.hitbox):
+                        player.take_damage()
+                        self._charge_hit = True
+
+                if self._charge_timer >= self.CHARGE_DASH_DUR:
+                    self._charge_timer   = 0.0
+                    self._charge_passes += 1
+                    if self._charge_passes >= self.CHARGE_PASSES * 2:
+                        # all dashes done
+                        self._charge_phase = "idle"
+                        self.state         = self.STATE_SWIM
+                    else:
+                        # pause before reversing
+                        self._charge_phase = "pause"
+
+            elif self._charge_phase == "pause":
+                # brief stop between dashes
+                if self._charge_timer >= self.CHARGE_PAUSE_DUR:
+                    self._charge_timer   = 0.0
+                    self._charge_hit     = False
+                    # flip direction: odd passes go back, even go forward again
+                    self._charge_forward = not self._charge_forward
+                    if self._charge_forward:
+                        # re-aim at current player position for the next forward dash
+                        tp = pygame.Vector2(player.rect.center) - self.pos
+                        self._charge_dir = tp.normalize() if tp.length() > 0 else self._charge_dir
+                    else:
+                        self._charge_dir = -self._charge_dir   # reverse
+                    self._charge_phase = "dash"
+
+        elif self.state == self.STATE_SUMMON:
+            # pause in place; summoning is instant, state returns to swim
+            self.state = self.STATE_SWIM
+
+        # ── clamp + apply frame ───────────────────────────────────────────────
+        self.pos.x = min(max(self.pos.x, PLAY_BOUNDS.left),  PLAY_BOUNDS.right)
+        self.pos.y = min(max(self.pos.y, PLAY_BOUNDS.top),   PLAY_BOUNDS.bottom)
+
         self.bob_offset = sin(self.bob_timer * 2.8) * 4
 
-        old_center = self.pos
-        self.rect = self.image.get_frect(center=old_center)
-        self.rect.clamp_ip(WORLD_BOUNDS)
-        self.pos = pygame.Vector2(self.rect.center)
+        # Advance swim-state animation continuously
+        if self.state not in (self.STATE_ATTACK,):
+            self._advance_frame(dt)
+
+        self.image = self._get_frame()
+        self.rect  = self.image.get_frect(center=self.pos)
+
+    def _begin_summon(self):
+        """Spawn minion sharks around the boss."""
+        self.state = self.STATE_SUMMON
+        cfg = wave_config()
+        for i in range(self.SUMMON_COUNT):
+            angle  = (2 * pi / self.SUMMON_COUNT) * i
+            offset = pygame.Vector2(cos(angle), sin(angle)) * 120
+            spawn  = self.pos + offset
+            spawn.x = min(max(spawn.x, PLAY_BOUNDS.left + 30),  PLAY_BOUNDS.right  - 30)
+            spawn.y = min(max(spawn.y, PLAY_BOUNDS.top  + 30),  PLAY_BOUNDS.bottom - 30)
+            Shark(spawn, (all_sprites, shark_sprites),
+                  is_boss=False, is_minion=True,
+                  speed_mult=cfg["speed_mult"],
+                  health_bonus=0)
+        # Flash the boss tint yellow briefly to signal summon
+        self._summon_flash = 0.3
 
     def hit(self):
         self.health -= 1
@@ -543,6 +1165,56 @@ class Bubble(pygame.sprite.Sprite):
         self.pos.x += sin(self.age * self.sway_speed) * self.sway_amount * dt
         self.rect.center = self.pos
         if self.age >= self.lifetime:
+            self.kill()
+
+
+# ---------------------------------------------------------------------------
+# HealthBubble — collectible that restores 1 HP (capped at max_health)
+# ---------------------------------------------------------------------------
+class HealthBubble(pygame.sprite.Sprite):
+    def __init__(self, pos, groups):
+        super().__init__(groups)
+        self._build_image()
+        self.pos      = pygame.Vector2(pos)
+        self.rect     = self.image.get_frect(center=self.pos)
+        self._timer   = 0.0
+        self._pulse   = uniform(0, 2 * pi)   # phase offset for glow pulse
+        self.bob_offset = 0.0
+
+    def _build_image(self, pulse=0.0):
+        R = 18
+        size = R * 2 + 6
+        surf = pygame.Surface((size, size), pygame.SRCALPHA)
+        cx = cy = size // 2
+
+        # outer glow ring (pulses)
+        glow_a = int(60 + 40 * sin(pulse))
+        pygame.draw.circle(surf, (80, 220, 120, glow_a), (cx, cy), R + 3)
+
+        # main bubble body — green tinted
+        pygame.draw.circle(surf, (60, 200, 100, 210), (cx, cy), R)
+        # inner bright highlight
+        pygame.draw.circle(surf, (160, 255, 180, 130), (cx - R//3, cy - R//3), R // 3)
+        # white rim
+        pygame.draw.circle(surf, (200, 255, 215, 160), (cx, cy), R, 2)
+
+        # red cross / plus symbol in the centre
+        cw = 3   # cross arm width
+        cl = 8   # cross arm half-length
+        pygame.draw.rect(surf, (220, 40, 40, 230), (cx - cw, cy - cl, cw*2, cl*2))
+        pygame.draw.rect(surf, (220, 40, 40, 230), (cx - cl, cy - cw, cl*2, cw*2))
+
+        self.image = surf
+
+    def update(self, dt):
+        self._timer += dt
+        self._pulse += dt * 3.0
+        self._build_image(self._pulse)
+        self.bob_offset = sin(self._timer * 2.5) * 6
+        self.rect.center = self.pos
+
+        # Despawn after 15 seconds if not collected
+        if self._timer > 15.0:
             self.kill()
 
 
@@ -617,25 +1289,23 @@ class ElectricBolt(pygame.sprite.Sprite):
 # Jellyfish enemy — floats, pulses its bell, and periodically fires bolts
 # ---------------------------------------------------------------------------
 class Jellyfish(pygame.sprite.Sprite):
-    SHOOT_INTERVAL_MIN = 2.2   # seconds between shots (min)
-    SHOOT_INTERVAL_MAX = 4.0   # seconds between shots (max)
+    SHOOT_INTERVAL_MIN = 2.2
+    SHOOT_INTERVAL_MAX = 4.0
+    # How often we rebuild the frame surface (seconds) — keeps CPU reasonable
+    FRAME_INTERVAL    = 0.05
 
     def __init__(self, pos, groups, speed_mult=1.0):
         super().__init__(groups)
-        self.base_surf   = jellyfish_surf
-        self.image       = self.base_surf
-        self.rect        = self.image.get_frect(center=pos)
-        self.pos         = pygame.Vector2(pos)
+        self.pos        = pygame.Vector2(pos)
+        self.max_health = 1
+        self.health     = self.max_health
+        self.speed      = uniform(45, 75) * speed_mult
 
-        self.max_health  = 1          # dies in one harpoon hit
-        self.health      = self.max_health
-        self.speed       = uniform(45, 75) * speed_mult
-
-        # Bell pulse animation
+        # Bell pulse — drives both the squish animation AND tentacle sway
         self._pulse_timer  = uniform(0, 2 * pi)
-        self._pulse_speed  = uniform(2.5, 4.0)
+        self._pulse_speed  = uniform(1.8, 3.0)      # slower = more majestic
 
-        # Gentle drift — jellyfish don't charge, they meander toward the player
+        # Gentle drift
         self._drift_timer  = uniform(0, 10)
         self._drift_amount = uniform(15, 35)
 
@@ -643,40 +1313,49 @@ class Jellyfish(pygame.sprite.Sprite):
         self._shoot_timer = uniform(0, self.SHOOT_INTERVAL_MAX)
         self._next_shot   = uniform(self.SHOOT_INTERVAL_MIN, self.SHOOT_INTERVAL_MAX)
 
-        self.bob_offset  = 0.0
-        self._bob_timer  = uniform(0, 10)
+        # Frame rebuild throttle
+        self._frame_timer = 0.0
+
+        self.bob_offset = 0.0
+        self._bob_timer = uniform(0, 10)
+
+        # Build first frame
+        self._rebuild_frame()
+
+    def _rebuild_frame(self):
+        """Regenerate the bell+tentacle surface from the current pulse phase."""
+        # pulse goes 0→1→0 smoothly using sin
+        raw_pulse  = (sin(self._pulse_timer) + 1) / 2   # 0..1
+        self.image = _build_jelly_frame(raw_pulse)
+        self.rect  = self.image.get_frect(center=self.pos)
 
     def update(self, dt):
         self._pulse_timer += dt * self._pulse_speed
         self._drift_timer += dt
         self._bob_timer   += dt
 
-        # Drift gently toward player
+        # Drift toward player
         to_player = pygame.Vector2(player.rect.center) - self.pos
-        if to_player.length() > 0:
-            forward = to_player.normalize()
-        else:
-            forward = pygame.Vector2(0, 1)
-
-        perp   = pygame.Vector2(-forward.y, forward.x)
-        drift  = sin(self._drift_timer * 1.4) * self._drift_amount
+        forward   = to_player.normalize() if to_player.length() > 0 else pygame.Vector2(0, 1)
+        perp      = pygame.Vector2(-forward.y, forward.x)
+        drift     = sin(self._drift_timer * 1.4) * self._drift_amount
         self.pos += (forward * self.speed + perp * drift) * dt
         self.pos  = pygame.Vector2(
-            min(max(self.pos.x, WORLD_BOUNDS.left),  WORLD_BOUNDS.right),
-            min(max(self.pos.y, WORLD_BOUNDS.top),   WORLD_BOUNDS.bottom),
+            min(max(self.pos.x, WORLD_BOUNDS.left), WORLD_BOUNDS.right),
+            min(max(self.pos.y, WORLD_BOUNDS.top), FLOOR_Y),
         )
 
-        # Bell scale pulse (inhale/exhale)
-        pulse = 1.0 + sin(self._pulse_timer) * 0.12
-        w, h  = self.base_surf.get_size()
-        self.image = pygame.transform.smoothscale(
-            self.base_surf, (max(1, round(w * pulse)), max(1, round(h * (0.92 + 0.08 * pulse))))
-        )
-        self.rect = self.image.get_frect(center=self.pos)
+        # Rebuild animated frame at throttled rate
+        self._frame_timer += dt
+        if self._frame_timer >= self.FRAME_INTERVAL:
+            self._frame_timer = 0.0
+            self._rebuild_frame()
+        else:
+            self.rect.center = self.pos
 
         self.bob_offset = sin(self._bob_timer * 2.2) * 5
 
-        # Shooting — fire at player
+        # Shoot
         self._shoot_timer += dt
         if self._shoot_timer >= self._next_shot:
             self._shoot_timer = 0.0
@@ -745,13 +1424,14 @@ class TutorialOverlay:
 # ---------------------------------------------------------------------------
 # Sprite groups
 # ---------------------------------------------------------------------------
-all_sprites      = CameraGroup()
-harpoon_sprites  = pygame.sprite.Group()
-shark_sprites    = pygame.sprite.Group()
+all_sprites       = CameraGroup()
+harpoon_sprites   = pygame.sprite.Group()
+shark_sprites     = pygame.sprite.Group()
 jellyfish_sprites = pygame.sprite.Group()
-bolt_sprites     = pygame.sprite.Group()
-bubble_sprites   = pygame.sprite.Group()
-fragment_sprites = pygame.sprite.Group()
+bolt_sprites      = pygame.sprite.Group()
+bubble_sprites    = pygame.sprite.Group()
+fragment_sprites  = pygame.sprite.Group()
+healthbubble_sprites = pygame.sprite.Group()
 
 player = Player(all_sprites)
 
@@ -770,9 +1450,11 @@ wave_announce_timer      = 0.0
 
 tutorial_overlay = TutorialOverlay()
 
-AMBIENT_BUBBLE_EVENT = pygame.USEREVENT + 1
-SHARK_SPAWN_EVENT    = pygame.USEREVENT + 2
+AMBIENT_BUBBLE_EVENT   = pygame.USEREVENT + 1
+SHARK_SPAWN_EVENT      = pygame.USEREVENT + 2
+HEALTH_BUBBLE_EVENT    = pygame.USEREVENT + 3
 pygame.time.set_timer(AMBIENT_BUBBLE_EVENT, 250)
+pygame.time.set_timer(HEALTH_BUBBLE_EVENT, 20_000)   # one health bubble every 20 s
 
 
 def wave_config():
@@ -799,7 +1481,7 @@ def spawn_shark(is_boss=False):
     margin = 60
     for _ in range(10):
         x = randint(WORLD_BOUNDS.left + margin, WORLD_BOUNDS.right - margin)
-        y = randint(WORLD_BOUNDS.top  + margin, WORLD_BOUNDS.bottom - margin)
+        y = randint(WORLD_BOUNDS.top  + margin, FLOOR_Y - margin)
         if pygame.Vector2(x, y).distance_to(player.rect.center) > 300:
             Shark((x, y), (all_sprites, shark_sprites),
                   is_boss=is_boss,
@@ -808,7 +1490,7 @@ def spawn_shark(is_boss=False):
             sharks_spawned_this_wave += 1
             return
     x = randint(WORLD_BOUNDS.left + margin, WORLD_BOUNDS.right - margin)
-    y = randint(WORLD_BOUNDS.top  + margin, WORLD_BOUNDS.bottom - margin)
+    y = randint(WORLD_BOUNDS.top  + margin, FLOOR_Y - margin)
     Shark((x, y), (all_sprites, shark_sprites),
           is_boss=is_boss,
           speed_mult=cfg["speed_mult"],
@@ -822,14 +1504,14 @@ def spawn_jellyfish():
     margin = 60
     for _ in range(10):
         x = randint(WORLD_BOUNDS.left + margin, WORLD_BOUNDS.right - margin)
-        y = randint(WORLD_BOUNDS.top  + margin, WORLD_BOUNDS.bottom - margin)
+        y = randint(WORLD_BOUNDS.top  + margin, FLOOR_Y - margin)
         if pygame.Vector2(x, y).distance_to(player.rect.center) > 300:
             Jellyfish((x, y), (all_sprites, jellyfish_sprites),
                       speed_mult=cfg["speed_mult"])
             jellies_spawned_this_wave += 1
             return
     x = randint(WORLD_BOUNDS.left + margin, WORLD_BOUNDS.right - margin)
-    y = randint(WORLD_BOUNDS.top  + margin, WORLD_BOUNDS.bottom - margin)
+    y = randint(WORLD_BOUNDS.top  + margin, FLOOR_Y - margin)
     Jellyfish((x, y), (all_sprites, jellyfish_sprites), speed_mult=cfg["speed_mult"])
     jellies_spawned_this_wave += 1
 
@@ -846,6 +1528,11 @@ def draw_ui():
         pygame.draw.circle(display_surface, color, (30 + i * 34, 30), 12)
         pygame.draw.circle(display_surface, (255, 255, 255), (30 + i * 34, 30), 12, 2)
 
+    # Show a small green "+" next to any active health bubbles on screen
+    if healthbubble_sprites:
+        hint = small_font.render("+  health", True, (80, 220, 110))
+        display_surface.blit(hint, (30 + player.max_health * 34 + 8, 20))
+
     # --- Wave progress bar (top-centre) ---
     if not level_complete and player.alive:
         cfg         = wave_config()
@@ -861,7 +1548,7 @@ def draw_ui():
 
         bar_w, bar_h = 320, 16
         bar_x = (WINDOW_WIDTH - bar_w) // 2
-        bar_y = 10
+        bar_y = 36
 
         # Background track
         pygame.draw.rect(display_surface, (20, 20, 50, 200), (bar_x - 2, bar_y - 2, bar_w + 4, bar_h + 4), border_radius=7)
@@ -897,7 +1584,7 @@ def draw_ui():
         else:
             kill_label = f"{wave_kills} / {total}"
             label_surf = small_font.render(f"{wave_label}   {kill_label}", True, (220, 240, 255))
-        display_surface.blit(label_surf, label_surf.get_frect(midbottom=(WINDOW_WIDTH // 2, bar_y - 2)))
+        display_surface.blit(label_surf, label_surf.get_frect(midtop=(WINDOW_WIDTH // 2, bar_y + bar_h + 4)))
 
     # --- Harpoon cooldown bar (bottom-left) ---
     bar_w, bar_h = 160, 14
@@ -939,12 +1626,13 @@ def draw_ui():
 def reset_game():
     global wave_kills, sharks_spawned_this_wave, jellies_spawned_this_wave, wave_ending
     global boss_spawned, level_complete, between_wave_timer, wave_announce_timer
-    for sprite in list(shark_sprites):     sprite.kill()
-    for sprite in list(jellyfish_sprites): sprite.kill()
-    for sprite in list(bolt_sprites):      sprite.kill()
-    for sprite in list(harpoon_sprites):   sprite.kill()
-    for sprite in list(bubble_sprites):    sprite.kill()
-    for sprite in list(fragment_sprites):  sprite.kill()
+    for sprite in list(shark_sprites):        sprite.kill()
+    for sprite in list(jellyfish_sprites):    sprite.kill()
+    for sprite in list(bolt_sprites):         sprite.kill()
+    for sprite in list(harpoon_sprites):      sprite.kill()
+    for sprite in list(bubble_sprites):       sprite.kill()
+    for sprite in list(fragment_sprites):     sprite.kill()
+    for sprite in list(healthbubble_sprites): sprite.kill()
     player.health = player.max_health
     player.alive  = True
     player.rect.center = (WORLD_BOUNDS.centerx, WORLD_BOUNDS.centery)
@@ -973,6 +1661,13 @@ while running:
             spawn_y = min(max(player.rect.centery + WINDOW_HEIGHT // 2 + randint(0, 100),
                               WORLD_BOUNDS.top), WORLD_BOUNDS.bottom)
             Bubble((spawn_x, spawn_y), (all_sprites, bubble_sprites))
+
+        # --- health bubble spawn ---
+        if event.type == HEALTH_BUBBLE_EVENT and player.alive and not level_complete:
+            margin = 80
+            hx = randint(WORLD_BOUNDS.left + margin, WORLD_BOUNDS.right  - margin)
+            hy = randint(WORLD_BOUNDS.top  + margin, FLOOR_Y - margin)
+            HealthBubble((hx, hy), (all_sprites, healthbubble_sprites))
 
         # --- wave shark spawning ---
         if event.type == SHARK_SPAWN_EVENT and player.alive and not level_complete and not wave_ending:
@@ -1050,6 +1745,14 @@ while running:
         if collected:
             level_complete = True
             pygame.time.set_timer(SHARK_SPAWN_EVENT, 0)
+
+    # -------------------------------------------------------------------
+    # Collect health bubbles -> +1 HP (capped at max)
+    # -------------------------------------------------------------------
+    if player.alive:
+        picked = pygame.sprite.spritecollide(player, healthbubble_sprites, True)
+        if picked and player.health < player.max_health:
+            player.health += 1
 
     # -------------------------------------------------------------------
     # Player <-> shark damage

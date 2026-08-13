@@ -47,15 +47,91 @@
       <!-- Hero image -->
       <div class="hero-wrap">
         <div class="hero-overlay">
-          <h1 class="hero-title">
-            <img src="title.png" alt="Sea Bound" class="hero-title-img" />
-          </h1>
+
+          <!-- Sky row: 2 reviews | title | 1 review -->
+          <div class="hero-sky-row">
+
+            <div class="hero-reviews-left">
+              <div class="review-item">
+                <p class="review-quote">"A love letter to pixel art"</p>
+                <div class="review-stars">&#9733;&#9733;&#9733;&#9733;&#9734;</div>
+              </div>
+              <div class="review-item">
+                <p class="review-quote">"Perhaps the greatest game I've ever played"</p>
+                <div class="review-stars">&#9733;&#9733;&#9733;&#9733;&#9733;</div>
+              </div>
+            </div>
+
+            <h1 class="hero-title">
+              <img src="title.png" alt="Sea Bound" class="hero-title-img" />
+            </h1>
+
+            <div class="hero-reviews-right">
+              <div class="review-item">
+                <p class="review-quote">"A group to keep your eye on"</p>
+                <div class="review-stars">&#9733;&#9733;&#9733;&#9733;&#9734;</div>
+              </div>
+            </div>
+
+          </div>
+
           <p class="hero-sub">Dive into the deep. Survive what lurks below.</p>
           <div class="hero-btns">
             <a href="#play" class="btn btn-primary" data-page="play">&#9654; Play Now</a>
             <a href="#about" class="btn btn-outline" data-page="about">Learn More</a>
           </div>
         </div>
+
+        <!-- =====================================================
+             HOTSPOTS — tweak left/top/width/height (all as % of
+             the hero image dimensions) to reposition each box.
+             To see the boxes visually while editing, temporarily
+             uncomment the debug line in the .hotspot:hover rule
+             in style.css, or add:  outline:2px solid red;
+             directly to any hotspot's style attribute.
+             ===================================================== -->
+
+        <!-- Jerry (in the diving cage) -->
+        <div class="hotspot" style="left:26%;top:24%;width:9%;height:8%;"
+             data-title="Jerry" data-tip="Your hero. Armed with a harpoon gun and nerves of steel, Jerry dives into the abyss to recover the lost treasure map — one piece at a time."></div>
+
+        <!-- Shark 1 (large, top-right) -->
+        <div class="hotspot" style="left:54%;top:28%;width:30%;height:10%;"
+             data-title="Shark" data-tip="The ocean's apex predator. Fast, relentless and always hungry. One bite and Jerry's dive is over."></div>
+
+        <!-- Shark 2 (middle-left) -->
+        <div class="hotspot" style="left:9%;top:41%;width:25%;height:5%;"
+             data-title="Shark" data-tip="A second hunter lurking in the shallows. These sharks patrol in packs — never let your guard down."></div>
+
+        <div class="hotspot" style="left:44%;top:41%;width:15%;height:3%;"
+             data-title="Shark" data-tip="A second hunter lurking in the shallows. These sharks patrol in packs — never let your guard down."></div>
+
+        <!-- Jellyfish (top-left) -->
+        <div class="hotspot" style="left:4%;top:29%;width:12%;height:7%;"
+             data-title="Jellyfish" data-tip="Slow but deadly. These translucent drifters deliver a paralysing sting — brush one and Jerry freezes in place just long enough for something worse to strike."></div>
+
+        <!-- Jellyfish (middle-centre) -->
+        <div class="hotspot" style="left:29%;top:36%;width:11%;height:6%;"
+             data-title="Jellyfish" data-tip="Slow but deadly. These translucent drifters deliver a paralysing sting — brush one and Jerry freezes in place just long enough for something worse to strike."></div>
+
+        <!-- Jellyfish (right) -->
+        <div class="hotspot" style="left:78%;top:39%;width:13%;height:6%;"
+             data-title="Jellyfish" data-tip="Slow but deadly. These translucent drifters deliver a paralysing sting — brush one and Jerry freezes in place just long enough for something worse to strike."></div>
+
+        <!-- Kraken (body + tentacles) -->
+        <div class="hotspot" style="left:12%;top:49%;width:76%;height:24%;"
+             data-title="The Kraken" data-tip="An ancient terror from the deepest trench. The Kraken guards the final level — eight tentacles, two glowing eyes, and zero mercy."></div>
+
+        <!-- Sunken Shipwreck -->
+        <div class="hotspot" style="left:7%;top:76%;width:75%;height:23%;"
+             data-title="Sunken Shipwreck" data-tip="A cursed pirate vessel dragged to the ocean floor centuries ago. Somewhere inside lies the last fragment of the treasure map — if you can survive long enough to reach it."></div>
+
+        <!-- Tooltip -->
+        <div class="hero-tooltip" id="heroTooltip">
+          <span class="hero-tooltip-title" id="heroTooltipTitle"></span>
+          <span class="hero-tooltip-text" id="heroTooltipText"></span>
+        </div>
+
       </div>
 
       <!-- Feature cards -->
@@ -63,17 +139,17 @@
         <h2 class="section-title pixel">FEATURES</h2>
         <div class="card-grid">
           <div class="card">
-            <div class="card-icon"><img src="../../Images/shark.png" alt="Shark" class="card-icon-img" /></div>
+            <div class="card-icon"><img src="../../Images/shark1.png" alt="Shark" class="card-icon-img" /></div>
             <h3>Survive the Deep</h3>
             <p>Battle sharks, jellyfish, the Kraken and an undead pirate crew across 3 of our hand-crafted levels.</p>
           </div>
           <div class="card">
-            <div class="card-icon"><img src="../../Images/harpoon gun.png" alt="Harpoon Gun" class="card-icon-img" /></div>
+            <div class="card-icon"><img src="harpoon gun.png" alt="Harpoon Gun" class="card-icon-img" /></div>
             <h3>Harpoon Combat</h3>
             <p>Aim your harpoon gun with precision. One shot can mean the difference between life and death.</p>
           </div>
           <div class="card">
-            <div class="card-icon"><img src="../../Images/mapfrag1.png" alt="Map Fragment" class="card-icon-img" /></div>
+            <div class="card-icon"><img src="mapfrag1.png" alt="Map Fragment" class="card-icon-img" /></div>
             <h3>Pixel Ocean World</h3>
             <p>A pixelled underwater universe full of secrets, caves and sunken ships to explore.</p>
           </div>
@@ -89,7 +165,7 @@
       <div class="stats-bar">
         <div class="stat"><span class="stat-num">3</span><span class="stat-label">Levels</span></div>
         <div class="stat-div"></div>
-        <div class="stat"><span class="stat-num">6</span><span class="stat-label">Enemy Types</span></div>
+        <div class="stat"><span class="stat-num">5</span><span class="stat-label">Enemy Types</span></div>
         <div class="stat-div"></div>
         <div class="stat"><span class="stat-num">Maximum</span><span class="stat-label">Danger</span></div>
       </div>

@@ -69,18 +69,9 @@ function handleSubmit(e) {
 
 // ── Levels data ───────────────────────────────────────────────────────────────
 const LEVELS = [
-  { num: 1,  name: "The Shallows",      diff: 1, colA: "#0099cc", colB: "#004d66" },
-  { num: 2,  name: "Coral Graveyard",   diff: 1, colA: "#e74c3c", colB: "#7b241c" },
-  { num: 3,  name: "Jellyfish Bloom",   diff: 2, colA: "#9b59b6", colB: "#4a235a" },
-  { num: 4,  name: "The Wreck",         diff: 2, colA: "#7f8c8d", colB: "#2c3e50" },
-  { num: 5,  name: "Tiger Shark Alley", diff: 3, colA: "#e67e22", colB: "#784212" },
-  { num: 6,  name: "Midnight Zone",     diff: 3, colA: "#1a237e", colB: "#0d1257" },
-  { num: 7,  name: "The Abyss",         diff: 4, colA: "#0a0a1a", colB: "#050510" },
-  { num: 8,  name: "Hydrothermal Vent", diff: 4, colA: "#bf360c", colB: "#4e0000" },
-  { num: 9,  name: "Sunken City",       diff: 4, colA: "#37474f", colB: "#1a2428" },
-  { num: 10, name: "Kraken Waters",     diff: 5, colA: "#4a148c", colB: "#1a0038" },
-  { num: 11, name: "Eye of the Deep",   diff: 5, colA: "#880e4f", colB: "#3d0022" },
-  { num: 12, name: "KRAKEN LAIR",       diff: 5, colA: "#1b0030", colB: "#0a0015" },
+  { num: 1, name: "The Shallows",   diff: 3, colA: "#0099cc", colB: "#004d66" },
+  { num: 2, name: "Kraken Waters",  diff: 4, colA: "#4a148c", colB: "#1a0038" },
+  { num: 3, name: "The Wreck",      diff: 5, colA: "#7f8c8d", colB: "#2c3e50" },
 ];
 
 function buildLevels() {
@@ -163,13 +154,11 @@ function drawLevelThumb(cvs, lv) {
 
 // ── Artwork data ──────────────────────────────────────────────────────────────
 const ARTWORKS = [
-  { label: "THE KRAKEN",       draw: drawArtKraken   },
-  { label: "GREAT WHITE",      draw: drawArtShark    },
-  { label: "DIVER",            draw: drawArtDiver    },
-  { label: "HARPOON DIVER",    img:  "jerryharpoon-r.png" },
-  { label: "CORAL REEF",       img:  "sea_floor.png"  },
-  { label: "THE WRECK",        draw: drawArtWreck    },
-  { label: "JELLYFISH",        draw: drawArtJelly    },
+  { label: "THE KRAKEN",  img: "Tentacle.png"},
+  { label: "SHARK", img: "shark3.png"},
+  { label: "JERRY", img: "jerryharpoon-r.png"},
+  { label: "SEA FLOOR", img: "../../Images/sea_floor.png"},
+  { label: "THE WRECK", img: "../../Images/shipwreck.png"},
 ];
 
 function buildArtwork() {
@@ -415,3 +404,44 @@ function drawAboutCanvas() {
 buildLevels();
 buildArtwork();
 drawAboutCanvas();
+
+// ── Hero hotspot tooltips ─────────────────────────────────────────────────────
+(function () {
+  const tooltip   = document.getElementById("heroTooltip");
+  const tipTitle  = document.getElementById("heroTooltipTitle");
+  const tipText   = document.getElementById("heroTooltipText");
+  const heroWrap  = document.querySelector(".hero-wrap");
+  const hotspots  = document.querySelectorAll(".hotspot");
+
+  if (!tooltip || !heroWrap) return;
+
+  hotspots.forEach(hs => {
+    hs.addEventListener("mouseenter", () => {
+      tipTitle.textContent = hs.dataset.title;
+      tipText.textContent  = hs.dataset.tip;
+      tooltip.classList.add("visible");
+    });
+    hs.addEventListener("mouseleave", () => {
+      tooltip.classList.remove("visible");
+    });
+  });
+
+  heroWrap.addEventListener("mousemove", e => {
+    if (!tooltip.classList.contains("visible")) return;
+    const rect   = heroWrap.getBoundingClientRect();
+    const margin = 12;
+    const tw     = tooltip.offsetWidth  || 220;
+    const th     = tooltip.offsetHeight || 80;
+
+    let x = e.clientX - rect.left + margin;
+    let y = e.clientY - rect.top  + margin;
+
+    // Flip left if too close to right edge
+    if (x + tw > rect.width  - margin) x = e.clientX - rect.left - tw - margin;
+    // Flip up if too close to bottom edge
+    if (y + th > rect.height - margin) y = e.clientY - rect.top  - th - margin;
+
+    tooltip.style.left = x + "px";
+    tooltip.style.top  = y + "px";
+  });
+})();

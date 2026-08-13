@@ -239,6 +239,91 @@ p:last-child { margin-bottom: 0; }
 .btn-outline:hover { background: rgba(0,153,204,.12); }
 .full-width { width: 100%; justify-content: center; }
 
+/* ── Reviews strip ───────────────────────────────────────────────────────── */
+.hero-sky-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 2rem;
+  width: 100%;
+  max-width: 1100px;
+  margin-bottom: 1rem;
+}
+.hero-reviews-left,
+.hero-reviews-right {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  flex: 1;
+}
+.hero-reviews-left  { align-items: flex-end;  text-align: right; }
+.hero-reviews-right { align-items: flex-start; text-align: left;  }
+.review-item {
+  display: flex;
+  flex-direction: column;
+  gap: .25rem;
+}
+.review-quote {
+  font-family: var(--body-font);
+  font-style: italic;
+  font-size: .95rem;
+  color: var(--white);
+  margin: 0;
+  text-shadow: 0 1px 6px rgba(0,0,0,.8);
+}
+.review-stars {
+  color: var(--gold);
+  font-size: 1rem;
+  letter-spacing: .08em;
+  text-shadow: 0 1px 4px rgba(0,0,0,.6);
+}
+.review-div { display: none; }
+@media (max-width: 700px) {
+  .hero-sky-row     { flex-direction: column; gap: .75rem; }
+  .hero-reviews-left,
+  .hero-reviews-right { align-items: center; text-align: center; }
+}
+
+/* ── Hero hotspots & tooltip ─────────────────────────────────────────────── */
+.hotspot {
+  position: absolute;
+  cursor: pointer;
+  border-radius: 4px;
+  /* ── DEBUG: uncomment the line below to see all hotspot boxes ──
+  outline: 2px solid red !important; background: rgba(255,0,0,0.15) !important; */
+}
+.hotspot:hover {
+  background: rgba(255, 255, 255, 0.08);
+  outline: 2px solid rgba(0, 201, 212, 0.5);
+}
+.hero-tooltip {
+  position: absolute;
+  display: none;
+  flex-direction: column;
+  gap: .3rem;
+  background: rgba(5, 12, 25, 0.88);
+  border: 1px solid var(--teal);
+  border-radius: 5px;
+  padding: .65rem .9rem;
+  max-width: 220px;
+  pointer-events: none;
+  z-index: 100;
+  backdrop-filter: blur(6px);
+}
+.hero-tooltip.visible { display: flex; }
+.hero-tooltip-title {
+  font-family: var(--pixel-font);
+  font-size: .45rem;
+  color: var(--aqua);
+  letter-spacing: .08em;
+}
+.hero-tooltip-text {
+  font-family: var(--body-font);
+  font-size: .82rem;
+  color: var(--white);
+  line-height: 1.5;
+}
+
 /* ── Hero ────────────────────────────────────────────────────────────────── */
 .hero-wrap {
   position: relative;

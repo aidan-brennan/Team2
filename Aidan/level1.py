@@ -873,7 +873,7 @@ class Shark(pygame.sprite.Sprite):
     CHARGE_DASH_DUR  = 0.38    # seconds each individual dash lasts
     CHARGE_PAUSE_DUR = 0.18    # brief pause between back-and-forth dashes
     CHARGE_PASSES    = 2       # how many back-and-forth passes per sequence
-    SUMMON_COOLDOWN  = 7.0
+    SUMMON_COOLDOWN  = 5.0
     SUMMON_COUNT     = 3
 
     STATE_SWIM   = "swim"

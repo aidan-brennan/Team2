@@ -48,6 +48,27 @@ p:last-child { margin-bottom: 0; }
 .pixel { font-family: var(--pixel-font); }
 .pixel.small { font-size: .55rem; letter-spacing: .08em; }
 
+/* Logo images */
+.nav-logo-img {
+  height: 38px;
+  width: auto;
+  image-rendering: pixelated;
+  display: block;
+}
+.hero-title-img {
+  max-width: clamp(220px, 55vw, 560px);
+  width: 100%;
+  height: auto;
+  image-rendering: pixelated;
+  filter: drop-shadow(0 0 24px rgba(255,215,0,.5));
+}
+.footer-logo-img {
+  height: 24px;
+  width: auto;
+  image-rendering: pixelated;
+  display: block;
+}
+
 /* ── NAV ─────────────────────────────────────────────────────────────────── */
 #navbar {
   position: fixed;
@@ -292,6 +313,13 @@ p:last-child { margin-bottom: 0; }
   box-shadow: 0 8px 32px rgba(0,153,204,.25);
 }
 .card-icon { font-size: 2rem; margin-bottom: 1rem; }
+.card-icon-img {
+  width: 2.5rem;
+  height: 2.5rem;
+  object-fit: contain;
+  image-rendering: pixelated;
+  display: block;
+}
 .card h3 {
   font-family: var(--pixel-font);
   font-size: .52rem;

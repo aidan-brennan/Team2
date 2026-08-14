@@ -13,6 +13,35 @@ big_font = pygame.font.SysFont("arial", 64, bold=True)
 title_font = pygame.font.SysFont("arial", 40, bold=True)
 
 # ---------------------------------------------------------------------------
+# Sound effects
+# ---------------------------------------------------------------------------
+pygame.mixer.init()
+
+def _load_sound(path, volume=100.0):
+    """Load a sound file. Returns a silent placeholder if the file is missing."""
+    try:
+        snd = pygame.mixer.Sound(path)
+        snd.set_volume(volume)
+        return snd
+    except (pygame.error, FileNotFoundError) as e:
+        print(f"[sound] couldn't load '{path}' ({e}) - using silent placeholder.")
+        # Return a zero-length silent sound so .play() calls never crash
+        buf = pygame.mixer.Sound(buffer=bytes(44))
+        return buf
+
+# ── placeholder paths — swap these for your own files ──────────────────────
+SFX_HARPOON_SHOOT  = _load_sound('sounds/harpoongun.ogg',       volume=0.8)
+SFX_HEALTH_PICKUP  = _load_sound('sounds/heart bubble.ogg',     volume=0.9)
+SFX_JELLY_ATTACK   = _load_sound('sounds/jellyfish attack.ogg', volume=0.7)
+SFX_JELLY_DIE      = _load_sound('sounds/jellyfish die.ogg',    volume=0.8)
+SFX_PLAYER_DAMAGE  = _load_sound('sounds/jerry damage.ogg',     volume=1.0)
+SFX_PLAYER_DIE     = _load_sound('sounds/oxygen tank.ogg',      volume=1.0)
+SFX_SHARK_ATTACK   = _load_sound('sounds/sharkbiteAUDIO.ogg',   volume=0.9)
+SFX_SHARK_DIE      = _load_sound('sounds/shark die.ogg',        volume=0.8)
+SFX_BOSS_DIE       = _load_sound('sounds/boss die.ogg',         volume=1.0)
+# ── end of sound placeholders ───────────────────────────────────────────────
+
+# ---------------------------------------------------------------------------
 # Art loading helpers
 # ---------------------------------------------------------------------------
 def load_or_placeholder(path, placeholder_maker, alpha=True):
@@ -316,7 +345,7 @@ def scale_surface(surf, factor):
 PLAYER_SCALE  = 1.5
 HARPOON_SCALE = 1.2
 SHARK_SCALE   = 1.6
-BOSS_EXTRA_SCALE = 1.9
+BOSS_EXTRA_SCALE = 2.7
 
 player_surf = scale_surface(load_or_placeholder('images/jerryharpoon.png', make_player_surface), PLAYER_SCALE)
 
@@ -331,21 +360,25 @@ harpoon_surf = scale_surface(_harpoon_raw.subsurface(_harpoon_raw.get_bounding_r
 #   The "frame arrays" are single-element lists so the animation code
 #   works without any other changes.
 # ---------------------------------------------------------------------------
-_shark1 = scale_surface(load_or_placeholder('images/shark1.png', make_shark_surface), SHARK_SCALE)
+_shark1    = scale_surface(load_or_placeholder('images/shark1.png',    make_shark_surface), SHARK_SCALE)
+_sharkmov1 = scale_surface(load_or_placeholder('images/sharkmov1.png', make_shark_surface), SHARK_SCALE)
+_sharkmov2 = scale_surface(load_or_placeholder('images/sharkmov2.png', make_shark_surface), SHARK_SCALE)
 
-# One swim frame + one attack frame — both the same image
-SHARK_SWIM_FRAMES   = [_shark1]
+# Swim animation: 3-frame cycle.  Attack uses shark1 only.
+SHARK_SWIM_FRAMES   = [_shark1, _sharkmov1, _sharkmov2]
 SHARK_ATTACK_FRAMES = [_shark1]
 
-# Boss: scale up further and apply red tint
-_boss1 = scale_surface(_shark1, BOSS_EXTRA_SCALE).copy()
-_boss_tint = pygame.Surface(_boss1.get_size(), pygame.SRCALPHA)
-_boss_tint.fill((255, 110, 110, 255))
-_boss1.blit(_boss_tint, (0, 0), special_flags=pygame.BLEND_RGBA_MULT)
+# Boss: load sharkboss.png (scaled up, no tint)
+def _make_boss_surface():
+    """Fallback if sharkboss.png is missing."""
+    return scale_surface(make_shark_surface(), BOSS_EXTRA_SCALE)
+
+_boss1 = scale_surface(
+    load_or_placeholder('images/sharkboss.png', _make_boss_surface), BOSS_EXTRA_SCALE
+)
 
 BOSS_SWIM_FRAMES   = [_boss1]
 BOSS_ATTACK_FRAMES = [_boss1]
-
 background_surf = load_or_placeholder('images/background.jpeg', make_background_tile, alpha=False)
 # Scale the map to 1.5× the window so it's compact but still scrollable
 _MAP_SCALE = 1.5
@@ -717,6 +750,9 @@ class Player(pygame.sprite.Sprite):
         self.invincible_until = now + self.invincible_duration
         if self.health <= 0:
             self.alive = False
+            SFX_PLAYER_DIE.play()
+        else:
+            SFX_PLAYER_DAMAGE.play()
 
     def is_invincible(self):
         return pygame.time.get_ticks() < self.invincible_until
@@ -767,13 +803,18 @@ class Player(pygame.sprite.Sprite):
 
         recent_mouse = pygame.mouse.get_just_pressed()
         if recent_mouse[0] and self.can_shoot:
-            offset_x = (self.rect.width if self.facing_right else -self.rect.width) * 0.3
-            start_pos = self.rect.center + pygame.Vector2(offset_x, -self.rect.height * 0.35)
+            # Gun tip is at raw pixel (22,34) in the 100x100 source art,
+            # which is dx=-28, dy=-16 from centre. After PLAYER_SCALE 1.5x: dx=-42, dy=-24.
+            # When facing_right the image is flipped so dx becomes +42.
+            gun_x = 42 * (1 if self.facing_right else -1)
+            gun_y = -24
+            start_pos = self.rect.center + pygame.Vector2(gun_x, gun_y)
             mouse_world_pos = pygame.Vector2(pygame.mouse.get_pos()) + all_sprites.offset
             direction = mouse_world_pos - start_pos
             if direction:
                 direction = direction.normalize()
                 Harpoon(harpoon_surf, start_pos, direction, (all_sprites, harpoon_sprites))
+                SFX_HARPOON_SHOOT.play()
                 self.can_shoot = False
                 self.harpoon_shoot_time = pygame.time.get_ticks()
                 self.fire_recoil(direction)
@@ -870,7 +911,7 @@ class Shark(pygame.sprite.Sprite):
     CHARGE_COOLDOWN  = 5.0     # seconds between charge sequences
     CHARGE_WINDUP    = 0.45    # seconds of wind-up telegraph
     CHARGE_SPEED     = 1000     # px/s during each dash
-    CHARGE_DASH_DUR  = 0.38    # seconds each individual dash lasts
+    CHARGE_DASH_DUR  = 0.45    # seconds each individual dash lasts
     CHARGE_PAUSE_DUR = 0.18    # brief pause between back-and-forth dashes
     CHARGE_PASSES    = 2       # how many back-and-forth passes per sequence
     SUMMON_COOLDOWN  = 5.0
@@ -1023,6 +1064,7 @@ class Shark(pygame.sprite.Sprite):
                     and self.rect.colliderect(player.hitbox)):
                 player.take_damage()
                 self._bit_this_attack = True
+                SFX_SHARK_ATTACK.play()
 
             if self._advance_frame(dt):
                 self.state           = self.STATE_SWIM
@@ -1053,6 +1095,7 @@ class Shark(pygame.sprite.Sprite):
                     if self.rect.colliderect(player.hitbox):
                         player.take_damage()
                         self._charge_hit = True
+                        SFX_SHARK_ATTACK.play()
 
                 if self._charge_timer >= self.CHARGE_DASH_DUR:
                     self._charge_timer   = 0.0
@@ -1116,9 +1159,12 @@ class Shark(pygame.sprite.Sprite):
 
     def hit(self):
         self.health -= 1
+        if self.is_boss and self.health <= 0:
+            SFX_BOSS_DIE.play()
         if self.health <= 0:
             for _ in range(6):
                 Bubble(self.rect.center, (all_sprites, bubble_sprites), small=True)
+            SFX_SHARK_DIE.play()
             self.kill()
             return True
         return False
@@ -1363,6 +1409,7 @@ class Jellyfish(pygame.sprite.Sprite):
             direction = to_player.normalize() if to_player.length() > 0 else pygame.Vector2(0, 1)
             ElectricBolt(pygame.Vector2(self.rect.center), direction,
                          (all_sprites, bolt_sprites))
+            SFX_JELLY_ATTACK.play()
 
     def hit(self):
         self.health -= 1
@@ -1370,6 +1417,7 @@ class Jellyfish(pygame.sprite.Sprite):
             # Discharge sparks on death
             for _ in range(4):
                 Bubble(self.rect.center, (all_sprites, bubble_sprites), small=True)
+            SFX_JELLY_DIE.play()
             self.kill()
             return True
         return False
@@ -1444,6 +1492,7 @@ jellies_spawned_this_wave = 0
 wave_kills               = 0      # total enemies killed this wave
 wave_ending              = False
 boss_spawned             = False
+boss_announce_timer      = 0.0    # counts down after boss spawns for the name flash
 level_complete           = False
 between_wave_timer       = 0.0
 wave_announce_timer      = 0.0
@@ -1463,13 +1512,14 @@ def wave_config():
 
 def start_wave(wave_idx):
     global current_wave, sharks_spawned_this_wave, jellies_spawned_this_wave
-    global wave_kills, wave_ending, boss_spawned, wave_announce_timer
+    global wave_kills, wave_ending, boss_spawned, wave_announce_timer, boss_announce_timer
     current_wave              = wave_idx
     sharks_spawned_this_wave  = 0
     jellies_spawned_this_wave = 0
     wave_kills                = 0
     wave_ending               = False
     boss_spawned              = False
+    boss_announce_timer       = 0.0
     wave_announce_timer       = 2.5
     cfg = wave_config()
     pygame.time.set_timer(SHARK_SPAWN_EVENT, cfg["interval"])
@@ -1605,6 +1655,23 @@ def draw_ui():
         ann_surf.set_alpha(alpha)
         display_surface.blit(ann_surf, ann_surf.get_frect(center=(WINDOW_WIDTH // 2, WINDOW_HEIGHT // 2)))
 
+    # --- Boss announce flash ---
+    if boss_announce_timer > 0 and player.alive and not level_complete:
+        progress = boss_announce_timer / 3.5          # 1.0 → 0.0
+        alpha    = min(255, int(progress * 255))
+        # dark cinematic panel behind the text
+        panel = pygame.Surface((WINDOW_WIDTH, 160), pygame.SRCALPHA)
+        panel.fill((0, 0, 0, min(200, int(progress * 220))))
+        display_surface.blit(panel, (0, WINDOW_HEIGHT // 2 - 80))
+        # main name — golden, large
+        name_surf = big_font.render("THE SHARKFATHER", True, (255, 210, 60))
+        name_surf.set_alpha(alpha)
+        display_surface.blit(name_surf, name_surf.get_frect(center=(WINDOW_WIDTH // 2, WINDOW_HEIGHT // 2 - 18)))
+        # subtitle
+        sub_surf = title_font.render("has arrived...", True, (220, 170, 50))
+        sub_surf.set_alpha(alpha)
+        display_surface.blit(sub_surf, sub_surf.get_frect(center=(WINDOW_WIDTH // 2, WINDOW_HEIGHT // 2 + 38)))
+
     # --- End states ---
     if not player.alive:
         over_surf = big_font.render("YOU DIED", True, (255, 60, 60))
@@ -1617,7 +1684,7 @@ def draw_ui():
         restart_surf = font.render("Press R to play again", True, (255, 255, 255))
         display_surface.blit(restart_surf, restart_surf.get_frect(center=(WINDOW_WIDTH // 2, WINDOW_HEIGHT // 2 + 40)))
     elif boss_spawned and not level_complete:
-        warning_surf = font.render("A massive shark is guarding a map fragment!", True, (255, 170, 170))
+        warning_surf = font.render("THE SHARKFATHER is guarding a map fragment!", True, (255, 200, 80))
         display_surface.blit(warning_surf, warning_surf.get_frect(midtop=(WINDOW_WIDTH // 2, 34)))
 
 # ---------------------------------------------------------------------------
@@ -1625,7 +1692,7 @@ def draw_ui():
 # ---------------------------------------------------------------------------
 def reset_game():
     global wave_kills, sharks_spawned_this_wave, jellies_spawned_this_wave, wave_ending
-    global boss_spawned, level_complete, between_wave_timer, wave_announce_timer
+    global boss_spawned, boss_announce_timer, level_complete, between_wave_timer, wave_announce_timer
     for sprite in list(shark_sprites):        sprite.kill()
     for sprite in list(jellyfish_sprites):    sprite.kill()
     for sprite in list(bolt_sprites):         sprite.kill()
@@ -1638,10 +1705,314 @@ def reset_game():
     player.rect.center = (WORLD_BOUNDS.centerx, WORLD_BOUNDS.centery)
     player.invincible_until = 0
     between_wave_timer  = 0.0
+    boss_announce_timer = 0.0
     wave_announce_timer = 0.0
     tutorial_overlay.visible = True
     start_wave(0)
 
+
+# ---------------------------------------------------------------------------
+# Menu fonts (larger than game fonts)
+# ---------------------------------------------------------------------------
+menu_title_font  = pygame.font.SysFont("arial", 80, bold=True)
+menu_button_font = pygame.font.SysFont("arial", 38, bold=True)
+menu_small_font  = pygame.font.SysFont("arial", 26)
+credits_font     = pygame.font.SysFont("arial", 30)
+credits_role_font= pygame.font.SysFont("arial", 22)
+
+# ---------------------------------------------------------------------------
+# Menu background — animated underwater scene reusing background_surf
+# ---------------------------------------------------------------------------
+def _draw_menu_bg(tick):
+    """Draw the animated menu background (scrolling background + drifting sharks)."""
+    display_surface.blit(background_surf, (0, 0))
+    # dark overlay to make text readable
+    overlay = pygame.Surface((WINDOW_WIDTH, WINDOW_HEIGHT), pygame.SRCALPHA)
+    overlay.fill((0, 10, 30, 160))
+    display_surface.blit(overlay, (0, 0))
+
+
+# ---------------------------------------------------------------------------
+# Animated menu shark (swims across the screen)
+# ---------------------------------------------------------------------------
+class MenuShark:
+    SPEED = 180
+
+    def __init__(self):
+        self._reset(start_offscreen=False)
+
+    def _reset(self, start_offscreen=True):
+        self.y    = uniform(WINDOW_HEIGHT * 0.25, WINDOW_HEIGHT * 0.75)
+        self.x    = -200 if start_offscreen else uniform(0, WINDOW_WIDTH)
+        self.flip = False   # facing right (moves left→right)
+        self._frame_idx   = 0
+        self._frame_timer = 0.0
+
+    def update(self, dt):
+        self.x += self.SPEED * dt
+        self._frame_timer += dt
+        if self._frame_timer >= 1.0 / 8:   # 8 fps
+            self._frame_timer = 0.0
+            self._frame_idx = (self._frame_idx + 1) % len(SHARK_SWIM_FRAMES)
+        if self.x > WINDOW_WIDTH + 200:
+            self._reset(start_offscreen=True)
+
+    def draw(self):
+        frame = SHARK_SWIM_FRAMES[self._frame_idx]
+        # menu shark faces RIGHT — our source art faces right, no flip needed
+        display_surface.blit(frame, (int(self.x - frame.get_width() // 2),
+                                     int(self.y - frame.get_height() // 2)))
+
+
+# ---------------------------------------------------------------------------
+# Button helper
+# ---------------------------------------------------------------------------
+class MenuButton:
+    PAD_X, PAD_Y = 48, 14
+    NORMAL_COL  = (20,  60, 100, 210)
+    HOVER_COL   = (40, 120, 180, 230)
+    BORDER_COL  = (100, 200, 255, 255)
+    TEXT_COL    = (220, 240, 255)
+    TEXT_HOV    = (255, 255, 255)
+
+    def __init__(self, label, center):
+        self.label  = label
+        self._surf  = menu_button_font.render(label, True, self.TEXT_COL)
+        tw, th      = self._surf.get_size()
+        self.rect   = pygame.Rect(0, 0, tw + self.PAD_X * 2, th + self.PAD_Y * 2)
+        self.rect.center = center
+
+    def draw(self, hover=False):
+        col = self.HOVER_COL if hover else self.NORMAL_COL
+        s   = pygame.Surface(self.rect.size, pygame.SRCALPHA)
+        s.fill(col)
+        pygame.draw.rect(s, self.BORDER_COL, s.get_rect(), 2, border_radius=8)
+        display_surface.blit(s, self.rect.topleft)
+        tcol = self.TEXT_HOV if hover else self.TEXT_COL
+        ts   = menu_button_font.render(self.label, True, tcol)
+        display_surface.blit(ts, ts.get_rect(center=self.rect.center))
+
+    def is_hovered(self, mouse_pos):
+        return self.rect.collidepoint(mouse_pos)
+
+
+# ---------------------------------------------------------------------------
+# Credits data
+# ---------------------------------------------------------------------------
+_NAMES = ["Fionn Murphy", "Matthew Shine", "Max Nolan", "Aidan Brennan"]
+
+CREDITS_ENTRIES = [
+    #("", ""),                           # top padding
+    ("A game by", ""),
+    ("", ""),
+    (_NAMES[0],           "Developer"),
+    ("", ""),
+    (_NAMES[1],           "Developer"),
+    ("", ""),
+    (_NAMES[3],           "Developer"),
+    ("", ""),
+    (_NAMES[2],           "Developer"),
+    ("", ""),
+    (_NAMES[0],           "Story & Writing"),
+    ("", ""),
+    (_NAMES[1],           "Sound Design"),
+    ("", ""),
+    (_NAMES[3],           "UI / UX"),
+    ("", ""),
+    (_NAMES[0],           "Producer"),
+    ("", ""),
+    ("Special Thanks", ""),
+    (choice(_NAMES),      "for making it this far"),
+    ("", ""),
+    ("", ""),
+    ("", ""),
+]
+
+
+def run_credits():
+    """Scrolling film-style credits.  Returns when ESC or click."""
+    scroll_y = float(WINDOW_HEIGHT)
+    scroll_speed = 55   # pixels per second
+    shark = MenuShark()
+    clock2 = pygame.time.Clock()
+
+    while True:
+        dt = clock2.tick(60) / 1000
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                pygame.quit(); raise SystemExit
+            if event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
+                return
+            if event.type == pygame.MOUSEBUTTONDOWN:
+                return
+
+        scroll_y -= scroll_speed * dt
+        shark.update(dt)
+
+        _draw_menu_bg(pygame.time.get_ticks())
+        shark.draw()
+
+        # title
+        tc = menu_title_font.render("CREDITS", True, (120, 220, 255))
+        display_surface.blit(tc, tc.get_rect(midtop=(WINDOW_WIDTH // 2, 20)))
+
+        # scroll the entries
+        y = scroll_y
+        LINE_H = 42
+        for (name, role) in CREDITS_ENTRIES:
+            if name:
+                col = (255, 255, 255) if role else (160, 220, 255)
+                ns  = credits_font.render(name, True, col)
+                display_surface.blit(ns, ns.get_rect(centerx=WINDOW_WIDTH // 2, top=y))
+                if role:
+                    rs = credits_role_font.render(role, True, (150, 190, 140))
+                    display_surface.blit(rs, rs.get_rect(centerx=WINDOW_WIDTH // 2, top=y + 30))
+                    y += LINE_H + 16
+                else:
+                    y += LINE_H
+            else:
+                y += LINE_H // 2
+
+        # auto-return when all text scrolled off top
+        if y < 0:
+            return
+
+        # dim bars at top and bottom so text fades in/out
+        for bar_y, bar_h, direction in [(0, 80, 1), (WINDOW_HEIGHT - 80, 80, -1)]:
+            for i in range(bar_h):
+                a = int(255 * (1 - i / bar_h)) if direction == 1 else int(255 * (i / bar_h))
+                pygame.draw.line(display_surface, (0, 10, 30),
+                                 (0, bar_y + i), (WINDOW_WIDTH, bar_y + i))
+                # re-blit with alpha would be complex; simple black bar is clean enough
+
+        back = menu_small_font.render("ESC / click to return", True, (120, 140, 160))
+        display_surface.blit(back, (14, WINDOW_HEIGHT - 28))
+        pygame.display.update()
+
+
+def run_options():
+    """Simple options screen — placeholder with volume/fullscreen stubs."""
+    clock2 = pygame.time.Clock()
+    shark  = MenuShark()
+    back_btn = MenuButton("Back", (WINDOW_WIDTH // 2, WINDOW_HEIGHT - 80))
+
+    while True:
+        dt = clock2.tick(60) / 1000
+        mouse = pygame.mouse.get_pos()
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                pygame.quit(); raise SystemExit
+            if event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
+                return
+            if event.type == pygame.MOUSEBUTTONDOWN:
+                if back_btn.is_hovered(mouse):
+                    return
+
+        shark.update(dt)
+        _draw_menu_bg(pygame.time.get_ticks())
+        shark.draw()
+
+        title_s = menu_title_font.render("OPTIONS", True, (120, 220, 255))
+        display_surface.blit(title_s, title_s.get_rect(midtop=(WINDOW_WIDTH // 2, 30)))
+
+        # stub options
+        opts = [
+            ("Music",  "Coming soon"),
+            ("SFX",    "Coming soon"),
+            ("Window", "1280 x 720"),
+        ]
+        for i, (k, v) in enumerate(opts):
+            ks = menu_button_font.render(f"{k}:", True, (200, 230, 255))
+            vs = menu_button_font.render(v,       True, (160, 190, 140))
+            cy = 200 + i * 80
+            display_surface.blit(ks, ks.get_rect(right=WINDOW_WIDTH // 2 - 20, centery=cy))
+            display_surface.blit(vs, vs.get_rect(left=WINDOW_WIDTH  // 2 + 20, centery=cy))
+
+        back_btn.draw(back_btn.is_hovered(mouse))
+        pygame.display.update()
+
+
+def run_main_menu():
+    """
+    Animated start screen.
+    Returns 'start' or raises SystemExit.
+    """
+    cx = WINDOW_WIDTH  // 2
+    btn_start   = MenuButton("Start Game", (cx, 360))
+    btn_options = MenuButton("Options",    (cx, 450))
+    btn_credits = MenuButton("Credits",    (cx, 540))
+    btn_quit    = MenuButton("Quit",       (cx, 630))
+    buttons     = [btn_start, btn_options, btn_credits, btn_quit]
+
+    shark       = MenuShark()
+    # second shark slightly behind, different y
+    shark2      = MenuShark()
+    shark2.x    = uniform(-400, -100)
+    shark2.y    = uniform(WINDOW_HEIGHT * 0.5, WINDOW_HEIGHT * 0.8)
+
+    clock2      = pygame.time.Clock()
+    bg_x        = 0.0   # slow pan
+    pulse       = 0.0
+
+    while True:
+        dt    = clock2.tick(60) / 1000
+        pulse += dt * 2.0
+        mouse = pygame.mouse.get_pos()
+
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                pygame.quit(); raise SystemExit
+            if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+                if btn_start.is_hovered(mouse):
+                    return 'start'
+                if btn_options.is_hovered(mouse):
+                    run_options()
+                if btn_credits.is_hovered(mouse):
+                    run_credits()
+                if btn_quit.is_hovered(mouse):
+                    pygame.quit(); raise SystemExit
+            if event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_RETURN:
+                    return 'start'
+                if event.key == pygame.K_ESCAPE:
+                    pygame.quit(); raise SystemExit
+
+        shark.update(dt)
+        shark2.update(dt)
+
+        # ── background ──────────────────────────────────────────────────────
+        _draw_menu_bg(pygame.time.get_ticks())
+        shark2.draw()
+        shark.draw()
+
+        # ── title ────────────────────────────────────────────────────────────
+        # glowing halo behind title text
+        glow_a = int(80 + 40 * sin(pulse))
+        glow_s = pygame.Surface((640, 120), pygame.SRCALPHA)
+        glow_s.fill((40, 120, 200, glow_a))
+        display_surface.blit(glow_s, glow_s.get_rect(center=(cx, 190)))
+
+        title_s = menu_title_font.render("UNDERWATER", True, (255, 255, 255))
+        sub_s   = menu_title_font.render("HARPOON",    True, (80,  210, 255))
+        display_surface.blit(title_s, title_s.get_rect(center=(cx, 160)))
+        display_surface.blit(sub_s,   sub_s.get_rect(  center=(cx, 240)))
+
+        # subtitle flicker
+        if int(pulse * 2) % 4 != 0:
+            press_s = menu_small_font.render("Press ENTER or click Start Game", True, (160, 200, 220))
+            display_surface.blit(press_s, press_s.get_rect(center=(cx, 302)))
+
+        # ── buttons ──────────────────────────────────────────────────────────
+        for btn in buttons:
+            btn.draw(btn.is_hovered(mouse))
+
+        pygame.display.update()
+
+
+# ---------------------------------------------------------------------------
+# Run the main menu first — only proceed to the game if 'start' is returned
+# ---------------------------------------------------------------------------
+run_main_menu()
 
 # ---------------------------------------------------------------------------
 # Main loop
@@ -1676,7 +2047,8 @@ while running:
 
             if is_boss and not boss_spawned:
                 spawn_shark(is_boss=True)
-                boss_spawned = True
+                boss_spawned        = True
+                boss_announce_timer = 3.5   # seconds to show "THE SHARKFATHER" flash
                 pygame.time.set_timer(SHARK_SPAWN_EVENT, 0)
             elif not is_boss and sharks_spawned_this_wave < cfg["count"]:
                 spawn_shark(is_boss=False)
@@ -1701,6 +2073,9 @@ while running:
 
     if wave_announce_timer > 0:
         wave_announce_timer = max(0.0, wave_announce_timer - dt)
+
+    if boss_announce_timer > 0:
+        boss_announce_timer = max(0.0, boss_announce_timer - dt)
 
     if current_wave == 0 and tutorial_overlay.visible:
         tutorial_overlay.update(dt)
@@ -1753,6 +2128,7 @@ while running:
         picked = pygame.sprite.spritecollide(player, healthbubble_sprites, True)
         if picked and player.health < player.max_health:
             player.health += 1
+            SFX_HEALTH_PICKUP.play()
 
     # -------------------------------------------------------------------
     # Player <-> shark damage

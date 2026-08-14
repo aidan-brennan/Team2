@@ -1161,7 +1161,9 @@ class Shark(pygame.sprite.Sprite):
         self.health -= 1
         if self.is_boss and self.health <= 0:
             SFX_BOSS_DIE.play()
-        if self.health <= 0:
+            self.kill()
+            return True
+        if self.health <= 0 and self.is_boss == False:
             for _ in range(6):
                 Bubble(self.rect.center, (all_sprites, bubble_sprites), small=True)
             SFX_SHARK_DIE.play()

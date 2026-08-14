@@ -293,8 +293,8 @@ p:last-child { margin-bottom: 0; }
   outline: 2px solid red !important; background: rgba(255,0,0,0.15) !important; */
 }
 .hotspot:hover {
-  background: rgba(255, 255, 255, 0.08);
-  outline: 2px solid rgba(0, 201, 212, 0.5);
+  background: transparent;
+  outline: none;
 }
 .hero-tooltip {
   position: absolute;

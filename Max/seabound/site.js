@@ -60,6 +60,18 @@
 // ── Contact form ──────────────────────────────────────────────────────────────
 function handleSubmit(e) {
   e.preventDefault();
+
+  const name    = document.getElementById("fname").value.trim();
+  const email   = document.getElementById("femail").value.trim();
+  const subject = document.getElementById("fsubject").value.trim();
+  const message = document.getElementById("fmessage").value.trim();
+
+  const mailtoLink = "mailto:maxnolan187@gmail.com"
+    + "?subject=" + encodeURIComponent(subject + " (from " + name + ")")
+    + "&body="    + encodeURIComponent("Name: " + name + "\nEmail: " + email + "\n\n" + message);
+
+  window.location.href = mailtoLink;
+
   const form    = document.getElementById("contactForm");
   const success = document.getElementById("formSuccess");
   form.querySelectorAll("input, textarea").forEach(el => el.value = "");

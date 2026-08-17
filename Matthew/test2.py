@@ -80,7 +80,7 @@ background_img = pygame.transform.scale(background_img, (WIDTH, HEIGHT))
 
 # Jerry - two frames for walking animation
 # convert_alpha() keeps the transparent parts of the image
-jerry_frame1 = pygame.image.load(join(IMAGES_DIR, "walking_jerry.png")).convert_alpha()
+jerry_frame1 = pygame.image.load(join(IMAGES_DIR, "walking_jerry1.png")).convert_alpha()
 jerry_frame1 = pygame.transform.scale(jerry_frame1, (85, 110))
 jerry_frame1.set_colorkey(WHITE)   # make pure white pixels transparent
 
@@ -92,23 +92,56 @@ jerry_frame2.set_colorkey(WHITE)
 jerry_frame1_left = pygame.transform.flip(jerry_frame1, True, False)
 jerry_frame2_left = pygame.transform.flip(jerry_frame2, True, False)
 
+# =============================================================
+# SWORD SWING ANIMATION FRAMES
+# =============================================================
+# The animation plays LOW → MEDIUM → HIGH → MEDIUM → LOW,
+# which gives a clear wind-up → strike → follow-through feel.
+#
+# All frames are scaled to exactly (85, 110) — the same size as
+# Jerry's normal walking sprites — so his body stays the same
+# size during the attack.
+#
+# set_colorkey removes the white background just like the walk frames.
+# Left-facing versions are pre-flipped so we don't flip every frame.
+
+def load_sword_frame(filename):
+    img = pygame.image.load(join(IMAGES_DIR, filename)).convert_alpha()
+    img = pygame.transform.scale(img, (85, 110))   # SAME size as normal Jerry sprite
+    img.set_colorkey(WHITE)
+    return img
+
+# 5 frames using the 3 reference images: LOW → MED → HIGH → MED → LOW
+sword_swing_right = [
+    load_sword_frame("jerry_sword_low.png"),    # frame 0: wind-up (sword low/back)
+    load_sword_frame("jerry_sword.png"),         # frame 1: mid approach
+    load_sword_frame("jerry_sword_high.png"),    # frame 2: full swing (sword high)
+    load_sword_frame("jerry_sword.png"),         # frame 3: coming back through
+    load_sword_frame("jerry_sword_low.png"),     # frame 4: follow-through / finish
+]
+
+# Pre-flip all 5 frames for when Jerry faces left
+sword_swing_left = []
+for frame in sword_swing_right:
+    sword_swing_left.append(pygame.transform.flip(frame, True, False))
+
 # Pirate
 pirate_img = pygame.image.load(join(IMAGES_DIR, "pirate.png")).convert_alpha()
 pirate_img = pygame.transform.scale(pirate_img, (150, 120))
 
-# Harpoon - one facing right, one pre-flipped for left
-harpoon_img_right = pygame.image.load(join(IMAGES_DIR, "harpoon.png")).convert_alpha()
-harpoon_img_right = pygame.transform.scale(harpoon_img_right, (150, 50))
-harpoon_img_left  = pygame.transform.flip(harpoon_img_right, True, False)
+# Bullet - small projectile fired from Jerry's gun (replaces the old harpoon)
+# Scaled to 30x12 so it looks like a small bullet rather than a large harpoon.
+# We use the harpoon.png file but scale it down to a bullet size.
+bullet_img_right = pygame.image.load(join(IMAGES_DIR, "harpoon.png")).convert_alpha()
+bullet_img_right = pygame.transform.scale(bullet_img_right, (30, 12))
+bullet_img_right.set_colorkey(WHITE)
+bullet_img_left  = pygame.transform.flip(bullet_img_right, True, False)
 
-# Boss - uses the pirate image scaled up with a red tint
-# You can swap "pirate.png" for a different image later
-boss_base_img = pygame.image.load(join(IMAGES_DIR, "pirate.png")).convert_alpha()
-boss_base_img = pygame.transform.scale(boss_base_img, (220, 180))
-# Add a red tint to make the boss look different
-tint_surface  = pygame.Surface((220, 180), pygame.SRCALPHA)
-tint_surface.fill((180, 0, 0, 60))
-boss_base_img.blit(tint_surface, (0, 0))
+# Boss - the Skeleton Captain (separate image, no tint needed)
+# Scaled to 170x200: bigger than normal pirates (150x120) but not massive.
+boss_base_img = pygame.image.load(join(IMAGES_DIR, "skeleton_captain.png")).convert_alpha()
+boss_base_img = pygame.transform.scale(boss_base_img, (170, 200))
+boss_base_img.set_colorkey(WHITE)
 
 # =============================================================
 # FONTS
@@ -161,8 +194,19 @@ class Player:
         # --- Sword attack ---
         # True while the sword swing is active
         self.attacking = False
-        # Counts down while attacking (attack lasts 10 frames)
+
+        # attack_timer counts down from 25 to 0 during the swing.
+        # We have 5 animation frames, each shown for 5 ticks:
+        #   ticks 25-21 → frame 0 (wind-up)
+        #   ticks 20-16 → frame 1 (raising)
+        #   ticks 15-11 → frame 2 (mid-swing)
+        #   ticks 10-6  → frame 3 (forward)
+        #   ticks  5-1  → frame 4 (finish)
         self.attack_timer = 0
+
+        # Which of the 5 sword swing images to show (0 to 4)
+        self.sword_frame = 0
+
         # Counts down between attacks (prevents spamming)
         self.attack_cooldown = 0
 
@@ -228,15 +272,27 @@ class Player:
         # Only start a new attack if cooldown has finished
         if self.attack_cooldown == 0:
             self.attacking       = True
-            self.attack_timer    = 10
-            self.attack_cooldown = 25
+            self.attack_timer    = 25   # 5 frames × 5 ticks each
+            self.sword_frame     = 0
+            self.attack_cooldown = 35
 
     def update_attack(self):
-        # Count down the attack timer
+        # Count down the attack timer each frame
         if self.attack_timer > 0:
             self.attack_timer -= 1
+
+            # Work out which of the 5 swing frames to show.
+            # attack_timer goes from 25 down to 1.
+            # We divide the 25 ticks into 5 equal buckets of 5 ticks each.
+            # int((attack_timer - 1) / 5) gives us 4, 3, 2, 1, 0 as it counts down.
+            # We subtract from 4 to reverse it so the animation goes 0→1→2→3→4.
+            bucket = int((self.attack_timer - 1) / 5)   # 4 down to 0
+            self.sword_frame = 4 - bucket                # 0 up to 4
+
         else:
-            self.attacking = False
+            # Timer reached 0 — attack is finished
+            self.attacking   = False
+            self.sword_frame = 0
 
         # Count down the cooldown between attacks
         if self.attack_cooldown > 0:
@@ -244,44 +300,85 @@ class Player:
 
     def get_sword_rect(self):
         # Returns the collision box for the sword while attacking.
-        # Returns an empty rectangle when not attacking.
+        # Returns an empty rectangle (size 0) when not attacking.
+        #
+        # The hitbox moves with the animation:
+        #   Early frames (wind-up)  → hitbox is close to Jerry
+        #   Middle frames (swing)   → hitbox extends further out
+        #   Late frames (finish)    → hitbox is below/forward
         if not self.attacking:
             return pygame.Rect(0, 0, 0, 0)
 
-        if self.facing_right:
-            # Sword appears to the RIGHT of Jerry
-            sx = self.x + 60
-        else:
-            # Sword appears to the LEFT of Jerry
-            sx = self.x - 55
+        # Hitbox offsets per frame — all coordinates are relative to self.x / self.y.
+        # The sword stays within the 85x110 sprite so reach is more compact.
+        # frame 0 (LOW  - wind-up):  sword is low/back
+        # frame 1 (MED  - approach): sword coming forward
+        # frame 2 (HIGH - strike):   sword at full height/reach
+        # frame 3 (MED  - return):   sword coming back
+        # frame 4 (LOW  - finish):   sword low again
+        offsets_right = [
+            (40,  60, 40, 35),   # frame 0  low/wind-up
+            (50,  30, 45, 35),   # frame 1  approaching
+            (55,   5, 50, 40),   # frame 2  high strike — full reach
+            (50,  30, 45, 35),   # frame 3  returning
+            (40,  60, 40, 35),   # frame 4  low/finish
+        ]
 
-        sy = self.y + 35
-        return pygame.Rect(sx, sy, 55, 45)
+        # For left-facing, mirror the x offset
+        offsets_left = [
+            ( 5,  60, 40, 35),   # frame 0
+            ( 0,  30, 45, 35),   # frame 1
+            (-20,  5, 50, 40),   # frame 2  full reach to the left
+            ( 0,  30, 45, 35),   # frame 3
+            ( 5,  60, 40, 35),   # frame 4
+        ]
+
+        f = self.sword_frame   # which frame (0–4)
+
+        if self.facing_right:
+            ox, oy, ow, oh = offsets_right[f]
+            return pygame.Rect(self.x + ox, self.y + oy, ow, oh)
+        else:
+            ox, oy, ow, oh = offsets_left[f]
+            return pygame.Rect(self.x + ox, self.y + oy, ow, oh)
 
     def draw(self):
-        # Pick the correct image based on direction and animation frame
-        if self.facing_right:
-            if self.anim_frame == 0:
-                image = jerry_frame1
-            else:
-                image = jerry_frame2
-        else:
-            if self.anim_frame == 0:
-                image = jerry_frame1_left
-            else:
-                image = jerry_frame2_left
+        # =======================================================
+        # WHICH SPRITE TO DRAW
+        # =======================================================
+        # While attacking: show the sword-swing animation frame.
+        # While walking:   show the normal walking frame.
+        # =======================================================
 
-        screen.blit(image, (self.x, self.y))
-
-        # Draw a faint yellow glow where the sword is during an attack
         if self.attacking:
-            sword_rect = self.get_sword_rect()
-            if SHOW_HITBOXES:
-                pygame.draw.rect(screen, YELLOW, sword_rect, 2)
+            # Pick the correct swing frame based on direction
+            if self.facing_right:
+                image = sword_swing_right[self.sword_frame]
             else:
-                glow = pygame.Surface((sword_rect.width, sword_rect.height), pygame.SRCALPHA)
-                glow.fill((255, 255, 0, 80))
-                screen.blit(glow, (sword_rect.x, sword_rect.y))
+                image = sword_swing_left[self.sword_frame]
+
+            # All sword frames are 85x110 — same as normal Jerry — so draw
+            # at self.x, self.y with no offset needed
+            screen.blit(image, (self.x, self.y))
+
+            # Show the sword hitbox outline when testing
+            if SHOW_HITBOXES:
+                pygame.draw.rect(screen, YELLOW, self.get_sword_rect(), 2)
+
+        else:
+            # Normal walking / idle sprite
+            if self.facing_right:
+                if self.anim_frame == 0:
+                    image = jerry_frame1
+                else:
+                    image = jerry_frame2
+            else:
+                if self.anim_frame == 0:
+                    image = jerry_frame1_left
+                else:
+                    image = jerry_frame2_left
+
+            screen.blit(image, (self.x, self.y))
 
         # Draw the body hitbox when testing
         if SHOW_HITBOXES:
@@ -358,16 +455,19 @@ class Pirate:
 
 
 # =============================================================
-# HARPOON CLASS
+# HARPOON CLASS  (now fires a small bullet)
 # =============================================================
 #
-# How the harpoon works:
+# How the bullet works:
 #   1. Player presses X
-#   2. A Harpoon object is created in front of Jerry
+#   2. A Harpoon object is created at the tip of Jerry's gun
 #   3. It is added to the harpoons list
-#   4. Every frame, harpoon.move() is called to slide it across
+#   4. Every frame, harpoon.move() slides it across the screen
 #   5. We check if it hits a pirate or the boss
 #   6. If it hits something or goes off screen, we remove it
+#
+# The variable/class is still called Harpoon so nothing else in
+# the game needs to change — only the image and size are different.
 
 class Harpoon:
 
@@ -375,15 +475,15 @@ class Harpoon:
         self.x = x
         self.y = y
 
-        # Store which direction this harpoon travels
+        # Store which direction this bullet travels
         self.facing_right = facing_right
 
         # Speed is always positive; direction decides left or right
         self.speed = HARPOON_SPEED
 
-        # Full drawn image size
-        self.width  = 150
-        self.height = 50
+        # Bullet drawn image size (30x12 — small bullet)
+        self.width  = 30
+        self.height = 12
 
     def move(self):
         if self.facing_right:
@@ -392,7 +492,7 @@ class Harpoon:
             self.x -= self.speed
 
     def is_off_screen(self):
-        # Returns True when the harpoon has gone past either edge of the screen
+        # Returns True when the bullet has gone past either edge
         if self.x > WIDTH:
             return True
         if self.x + self.width < 0:
@@ -401,22 +501,17 @@ class Harpoon:
 
     def draw(self):
         if self.facing_right:
-            screen.blit(harpoon_img_right, (self.x, self.y))
+            screen.blit(bullet_img_right, (self.x, self.y))
         else:
-            screen.blit(harpoon_img_left, (self.x, self.y))
+            screen.blit(bullet_img_left, (self.x, self.y))
 
         if SHOW_HITBOXES:
             pygame.draw.rect(screen, CYAN, self.get_rect(), 2)
 
     def get_rect(self):
-        # The actual spike is only a small part of the 150x50 image.
-        # We use a slim rectangle to cover just the tip of the spike.
-        if self.facing_right:
-            # Spike is on the right side of the image
-            return pygame.Rect(self.x + 90, self.y + 15, 60, 20)
-        else:
-            # Spike is on the left side of the flipped image
-            return pygame.Rect(self.x, self.y + 15, 60, 20)
+        # The collision box covers the full small bullet image.
+        # 30x12 is already small and accurate so no offset needed.
+        return pygame.Rect(self.x, self.y, self.width, self.height)
 
 
 # =============================================================
@@ -431,12 +526,14 @@ class Harpoon:
 class Boss:
 
     def __init__(self):
-        self.width  = 220
-        self.height = 180
+        # The Skeleton Captain is 170x200 — bigger than pirates (150x120)
+        # but not so large it fills the screen
+        self.width  = 170
+        self.height = 200
 
         # Start off the right edge and move in
         self.x = WIDTH
-        self.y = HEIGHT // 2 - 90
+        self.y = HEIGHT // 2 - 100   # roughly vertically centred in the play area
 
         self.speed = BOSS_SPEED
         self.hp    = BOSS_MAX_HP
@@ -474,9 +571,9 @@ class Boss:
             pygame.draw.rect(screen, ORANGE, self.get_rect(), 2)
 
     def draw_hp_bar(self):
-        # Position the bar above the boss sprite
+        # Position the bar above the boss sprite, centred on the captain
         bar_x = self.x + self.width // 2 - 110
-        bar_y = self.y - 28
+        bar_y = self.y - 30
         bar_w = 220
         bar_h = 18
 
@@ -498,12 +595,13 @@ class Boss:
         screen.blit(hp_text, text_rect)
 
     def get_rect(self):
-        # Smaller hitbox so the edges of the large sprite don't count.
-        # self.x + 40  = start 40 pixels in from the left
-        # self.y + 15  = start 15 pixels down from the top
-        # 140          = width of the hitbox
-        # 150          = height of the hitbox
-        return pygame.Rect(self.x + 40, self.y + 15, 140, 150)
+        # Smaller hitbox so transparent edges don't count.
+        # The captain sprite is 170x200.
+        # self.x + 30  = 30px in from the left
+        # self.y + 20  = 20px down from the top
+        # 110          = hitbox width
+        # 160          = hitbox height
+        return pygame.Rect(self.x + 30, self.y + 20, 110, 160)
 
 
 # =============================================================
@@ -909,13 +1007,16 @@ def run_game():
                 if event.key == pygame.K_x:
                     if harpoon_cooldown == 0:
 
-                        # Spawn the harpoon at the front of Jerry's body
+                        # Spawn the bullet at the tip of Jerry's gun
+                        # Jerry's body hitbox is x+15 wide 55px.
+                        # Right-facing: front edge is at x+15+55 = x+70
+                        # Left-facing:  front edge is at x+15, bullet is 30px wide
                         if player.facing_right:
-                            harpoon_x = player.x + 70
+                            harpoon_x = player.x + 70     # just past Jerry's right edge
                         else:
-                            harpoon_x = player.x - 80
+                            harpoon_x = player.x + 15 - 30  # just past Jerry's left edge
 
-                        harpoon_y = player.y + 45
+                        harpoon_y = player.y + 50   # roughly gun/hand height
 
                         new_harpoon = Harpoon(harpoon_x, harpoon_y, player.facing_right)
                         harpoons.append(new_harpoon)
@@ -1032,12 +1133,14 @@ def run_game():
         # =====================================================
         # COLLISIONS - SWORD vs BOSS
         # =====================================================
-        # attack_timer == 9 is the first frame of the swing,
-        # so we only deal damage once per swing, not every frame
+        # attack_timer == 24 is the very first tick of the swing
+        # (timer starts at 25 and counts down).
+        # We only deal damage on that one tick so a single swing
+        # can't hit the boss multiple times.
 
         if boss is not None:
             if sword_rect.colliderect(boss.get_rect()):
-                if player.attack_timer == 9:
+                if player.attack_timer == 24:
                     boss.take_damage(1)
 
                     for i in range(10):

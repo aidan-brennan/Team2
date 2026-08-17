@@ -1,6 +1,12 @@
 import pygame
+import sys
+import os
 from random import randint, uniform, choice
 from math import sin, cos, pi
+
+# Add the Fionn folder so we can import OxygenTank
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'Fionn'))
+from oxygentank import OxygenTank
 
 pygame.init()
 WINDOW_WIDTH, WINDOW_HEIGHT = 1280, 720
@@ -31,14 +37,15 @@ def _load_sound(path, volume=100.0):
 
 # ── placeholder paths — swap these for your own files ──────────────────────
 SFX_HARPOON_SHOOT  = _load_sound('sounds/harpoongun.ogg',       volume=0.8)
-SFX_HEALTH_PICKUP  = _load_sound('sounds/heart bubble.ogg',     volume=0.9)
-SFX_JELLY_ATTACK   = _load_sound('sounds/jellyfish attack.ogg', volume=0.7)
+SFX_HEALTH_PICKUP  = _load_sound('sounds/heart bubble.ogg',     volume=0.8)
+SFX_JELLY_ATTACK   = _load_sound('sounds/jellyfish attack.ogg', volume=0.8)
 SFX_JELLY_DIE      = _load_sound('sounds/jellyfish die.ogg',    volume=0.8)
 SFX_PLAYER_DAMAGE  = _load_sound('sounds/jerry damage.ogg',     volume=1.0)
-SFX_PLAYER_DIE     = _load_sound('sounds/oxygen tank.ogg',      volume=1.0)
+SFX_PLAYER_DIE     = _load_sound('sounds/jerrydie.ogg',         volume=1.0)
 SFX_SHARK_ATTACK   = _load_sound('sounds/sharkbiteAUDIO.ogg',   volume=0.9)
 SFX_SHARK_DIE      = _load_sound('sounds/shark die.ogg',        volume=0.8)
 SFX_BOSS_DIE       = _load_sound('sounds/boss die.ogg',         volume=1.0)
+SFX_OXYGEN_PICKUP  = _load_sound('sounds/oxygen tank.ogg',      volume=0.7)
 # ── end of sound placeholders ───────────────────────────────────────────────
 
 # ---------------------------------------------------------------------------
@@ -573,8 +580,41 @@ floor_surf = _make_floor_surface()
 # PLAY_BOUNDS — same as WORLD_BOUNDS but the bottom is the top of the floor
 PLAY_BOUNDS = pygame.Rect(0, 0, bg_width, FLOOR_Y)
 
-jellyfish_surf = scale_surface(load_or_placeholder('images/jellyfish.png', make_jellyfish_surface), 1.4)
-mapfrag_surf   = scale_surface(load_or_placeholder('images/mapfrag1.png',  make_mapfrag_surface),   1.0)
+# jellyfish.png is tried at runtime; _build_jelly_frame is the live fallback
+load_or_placeholder('images/jellyfish.png', make_jellyfish_surface)   # preload/log only
+mapfrag_surf = scale_surface(load_or_placeholder('images/mapfrag1.png', make_mapfrag_surface), 1.0)
+
+# ---------------------------------------------------------------------------
+# Menu-specific art
+#   menu_bg_surf  — top portion of web_back.png scaled to fill the window
+#   menu_title_img — title.png scaled to a comfortable header size
+# ---------------------------------------------------------------------------
+def _load_menu_bg():
+    try:
+        raw = pygame.image.load('images/web_back.png').convert()
+        # web_back.png is 862×1825 — crop just the top WINDOW_HEIGHT rows then
+        # scale to the full window width so it fills the screen edge-to-edge.
+        crop_h = min(raw.get_height(), round(raw.get_width() * WINDOW_HEIGHT / WINDOW_WIDTH))
+        cropped = raw.subsurface((0, 0, raw.get_width(), crop_h))
+        return pygame.transform.smoothscale(cropped, (WINDOW_WIDTH, WINDOW_HEIGHT))
+    except (pygame.error, FileNotFoundError) as e:
+        print(f"[art] couldn't load 'images/web_back.png' ({e}) - using game background instead.")
+        return background_surf   # fallback to the game background
+
+def _load_menu_title():
+    try:
+        raw = pygame.image.load('images/title.png').convert_alpha()
+        # Scale up proportionally so the title is ~500px wide
+        target_w = 500
+        scale    = target_w / raw.get_width()
+        return pygame.transform.smoothscale(
+            raw, (target_w, max(1, round(raw.get_height() * scale))))
+    except (pygame.error, FileNotFoundError) as e:
+        print(f"[art] couldn't load 'images/title.png' ({e}) - using text fallback.")
+        return None   # run_main_menu handles None gracefully
+
+menu_bg_surf    = _load_menu_bg()
+menu_title_img  = _load_menu_title()
 
 # ---------------------------------------------------------------------------
 # Wave definitions
@@ -663,6 +703,12 @@ class Player(pygame.sprite.Sprite):
         self.invincible_until    = 0
         self.invincible_duration = 1200
         self.alive = True
+
+        # Oxygen system
+        self.max_oxygen    = 100.0
+        self.oxygen        = self.max_oxygen
+        self.oxygen_drain  = 4.0    # points per second lost passively
+        self.oxygen_empty  = False  # True once oxygen first hits 0
 
         self.can_shoot          = True
         self.harpoon_shoot_time = 0
@@ -760,6 +806,14 @@ class Player(pygame.sprite.Sprite):
     def update(self, dt):
         if not self.alive:
             return
+
+        # Oxygen drain
+        self.oxygen = max(0.0, self.oxygen - self.oxygen_drain * dt)
+        if self.oxygen <= 0 and not self.oxygen_empty:
+            self.oxygen_empty = True
+            self.take_damage()   # lose a life when oxygen runs out
+        elif self.oxygen > 0:
+            self.oxygen_empty = False   # allow damage again next time it hits 0
 
         keys = pygame.key.get_pressed()
         self.direction.x = int(keys[pygame.K_RIGHT] or keys[pygame.K_d]) - int(keys[pygame.K_LEFT] or keys[pygame.K_a])
@@ -908,10 +962,10 @@ class Shark(pygame.sprite.Sprite):
     BITE_FRAME      = 2        # frame index where bite damage is dealt
 
     # ── boss-only tuning ──
-    CHARGE_COOLDOWN  = 5.0     # seconds between charge sequences
+    CHARGE_COOLDOWN  = 4.0     # seconds between charge sequences
     CHARGE_WINDUP    = 0.45    # seconds of wind-up telegraph
     CHARGE_SPEED     = 1000     # px/s during each dash
-    CHARGE_DASH_DUR  = 0.45    # seconds each individual dash lasts
+    CHARGE_DASH_DUR  = 0.6    # seconds each individual dash lasts
     CHARGE_PAUSE_DUR = 0.18    # brief pause between back-and-forth dashes
     CHARGE_PASSES    = 2       # how many back-and-forth passes per sequence
     SUMMON_COOLDOWN  = 5.0
@@ -1267,6 +1321,60 @@ class HealthBubble(pygame.sprite.Sprite):
 
 
 # ---------------------------------------------------------------------------
+# OxygenTankPickup — uses OxygenTank from oxygentank.py for bob/visual logic,
+# wrapped in a Sprite so it works with CameraGroup and the free-roam world.
+# ---------------------------------------------------------------------------
+def _make_o2_surface():
+    """Fallback surface if o2 tank.png is missing."""
+    s = pygame.Surface((48, 48), pygame.SRCALPHA)
+    pygame.draw.ellipse(s, (60, 180, 220), (8, 4, 32, 42))
+    pygame.draw.ellipse(s, (100, 220, 255), (8, 4, 32, 42), 2)
+    pygame.draw.rect(s, (180, 180, 200), (18, 0, 12, 6), border_radius=3)
+    ts = pygame.font.SysFont("arial", 14, bold=True).render("O2", True, (255,255,255))
+    s.blit(ts, ts.get_rect(center=(24, 24)))
+    return s
+
+try:
+    _o2_raw = pygame.image.load('images/o2 tank.png').convert_alpha()
+    _o2_img = pygame.transform.smoothscale(_o2_raw, (52, 52))
+except (pygame.error, FileNotFoundError):
+    _o2_img = _make_o2_surface()
+
+
+class OxygenTankPickup(pygame.sprite.Sprite):
+    """
+    Collectible oxygen tank.  Reuses OxygenTank for the bob animation;
+    lives in world-space as a normal Sprite so CameraGroup can draw it.
+    """
+    REFILL = 60          # oxygen points restored on pickup
+    LIFETIME = 18.0      # seconds before it despawns
+
+    def __init__(self, pos, groups):
+        super().__init__(groups)
+        # OxygenTank handles bob + collision, we feed it screen coords;
+        # CameraGroup translates world→screen, so we pass world pos here.
+        self._tank    = OxygenTank(pos[0], pos[1], _o2_img.copy(), self.REFILL)
+        self.image    = _o2_img
+        self.pos      = pygame.Vector2(pos)
+        self.rect     = self.image.get_frect(center=self.pos)
+        self._age     = 0.0
+        self.bob_offset = 0.0
+
+    def update(self, dt):
+        self._age += dt
+        if self._age >= self.LIFETIME:
+            self.kill()
+            return
+        # Bob using OxygenTank constants
+        import math
+        now = pygame.time.get_ticks()
+        self.bob_offset = (math.sin(now * OxygenTank.BOB_SPEED +
+                                    self._tank.time_offset) * OxygenTank.BOB_AMPLITUDE)
+        self.rect.center = self.pos
+        
+
+
+# ---------------------------------------------------------------------------
 # ElectricBolt — jellyfish projectile
 # ---------------------------------------------------------------------------
 class ElectricBolt(pygame.sprite.Sprite):
@@ -1482,6 +1590,7 @@ bolt_sprites      = pygame.sprite.Group()
 bubble_sprites    = pygame.sprite.Group()
 fragment_sprites  = pygame.sprite.Group()
 healthbubble_sprites = pygame.sprite.Group()
+oxygentank_sprites   = pygame.sprite.Group()
 
 player = Player(all_sprites)
 
@@ -1504,8 +1613,10 @@ tutorial_overlay = TutorialOverlay()
 AMBIENT_BUBBLE_EVENT   = pygame.USEREVENT + 1
 SHARK_SPAWN_EVENT      = pygame.USEREVENT + 2
 HEALTH_BUBBLE_EVENT    = pygame.USEREVENT + 3
+OXYGEN_TANK_EVENT      = pygame.USEREVENT + 4
 pygame.time.set_timer(AMBIENT_BUBBLE_EVENT, 250)
-pygame.time.set_timer(HEALTH_BUBBLE_EVENT, 20_000)   # one health bubble every 20 s
+pygame.time.set_timer(HEALTH_BUBBLE_EVENT, 20_000)
+pygame.time.set_timer(OXYGEN_TANK_EVENT,   15_000)  # one oxygen tank every 15 s
 
 
 def wave_config():
@@ -1571,123 +1682,187 @@ def spawn_jellyfish():
 start_wave(0)  # kick off tutorial wave
 
 # ---------------------------------------------------------------------------
+# UI helpers
+# ---------------------------------------------------------------------------
+def _draw_panel(x, y, w, h, alpha=200, radius=10):
+    """Dark frosted panel with a subtle blue rim."""
+    s = pygame.Surface((w, h), pygame.SRCALPHA)
+    pygame.draw.rect(s, (8, 18, 45, alpha),        (0, 0, w, h), border_radius=radius)
+    pygame.draw.rect(s, (60, 140, 220, 160),       (0, 0, w, h), 2, border_radius=radius)
+    display_surface.blit(s, (x, y))
+
+def _draw_bar(x, y, w, h, ratio, fill_col, bg_col=(30, 30, 55),
+              border_col=(180, 210, 255), radius=6):
+    """Generic rounded progress bar."""
+    pygame.draw.rect(display_surface, bg_col,     (x, y, w, h), border_radius=radius)
+    fw = max(0, round(w * ratio))
+    if fw:
+        pygame.draw.rect(display_surface, fill_col, (x, y, fw, h), border_radius=radius)
+    pygame.draw.rect(display_surface, border_col,  (x, y, w, h), 2, border_radius=radius)
+
+# ---------------------------------------------------------------------------
 # UI drawing
 # ---------------------------------------------------------------------------
 def draw_ui():
-    # --- Health pips ---
+    # ── Health pips (top-left) ────────────────────────────────────────────
+    pip_r   = 14
+    pip_gap = 36
+    pip_y   = 28
+    _draw_panel(8, 8, player.max_health * pip_gap + 16, pip_r * 2 + 16, alpha=170)
     for i in range(player.max_health):
-        color = (220, 60, 60) if i < player.health else (70, 70, 70)
-        pygame.draw.circle(display_surface, color, (30 + i * 34, 30), 12)
-        pygame.draw.circle(display_surface, (255, 255, 255), (30 + i * 34, 30), 12, 2)
+        cx_ = 16 + pip_r + i * pip_gap
+        if i < player.health:
+            # filled heart — glowing red
+            pygame.draw.circle(display_surface, (200, 40, 40), (cx_, pip_y), pip_r)
+            pygame.draw.circle(display_surface, (255, 120, 120), (cx_ - 4, pip_y - 4), 5)  # highlight
+            pygame.draw.circle(display_surface, (255, 80, 80), (cx_, pip_y), pip_r, 2)
+        else:
+            # empty
+            pygame.draw.circle(display_surface, (50, 30, 30), (cx_, pip_y), pip_r)
+            pygame.draw.circle(display_surface, (120, 60, 60), (cx_, pip_y), pip_r, 2)
 
-    # Show a small green "+" next to any active health bubbles on screen
+    # health-bubble indicator
     if healthbubble_sprites:
-        hint = small_font.render("+  health", True, (80, 220, 110))
-        display_surface.blit(hint, (30 + player.max_health * 34 + 8, 20))
+        pulse_a = int(180 + 75 * sin(pygame.time.get_ticks() / 300))
+        hs = small_font.render("+1 health available", True, (80, 235, 120))
+        hs.set_alpha(pulse_a)
+        display_surface.blit(hs, (16, pip_y + pip_r + 8))
 
-    # --- Wave progress bar (top-centre) ---
+    # oxygen-tank indicator
+    if oxygentank_sprites:
+        pulse_a = int(180 + 75 * sin(pygame.time.get_ticks() / 280))
+        os_ = small_font.render("O2 tank nearby!", True, (0, 210, 255))
+        os_.set_alpha(pulse_a)
+        display_surface.blit(os_, (16, pip_y + pip_r + 28))
+
+    # ── Wave progress bar (top-centre) ───────────────────────────────────
     if not level_complete and player.alive:
-        cfg         = wave_config()
-        total_sharks = cfg["count"]
-        total_jelly  = cfg["jellies"]
-        total        = total_sharks + total_jelly
+        cfg          = wave_config()
+        total        = cfg["count"] + cfg["jellies"]
+        wave_label   = "TUTORIAL" if current_wave == 0 else f"Wave {current_wave}"
 
+        bar_w, bar_h = 340, 18
+        bar_x        = (WINDOW_WIDTH - bar_w) // 2
+        bar_y        = 38
+
+        # panel behind bar
+        _draw_panel(bar_x - 14, bar_y - 28, bar_w + 28, bar_h + 46, alpha=180, radius=10)
+
+        # label row
         if between_wave_timer > 0:
-            ratio = 1.0 - (between_wave_timer / BETWEEN_WAVE_DELAY)
-        else:
-            remaining = max(0, total - wave_kills)
-            ratio = remaining / total if total > 0 else 0.0
-
-        bar_w, bar_h = 320, 16
-        bar_x = (WINDOW_WIDTH - bar_w) // 2
-        bar_y = 36
-
-        # Background track
-        pygame.draw.rect(display_surface, (20, 20, 50, 200), (bar_x - 2, bar_y - 2, bar_w + 4, bar_h + 4), border_radius=7)
-        pygame.draw.rect(display_surface, (40, 40, 70), (bar_x, bar_y, bar_w, bar_h), border_radius=6)
-
-        # Colour: teal while refilling, blue→yellow→red while draining
-        if between_wave_timer > 0:
-            bar_color = (60, 220, 160)
-        elif ratio > 0.6:
-            bar_color = (80, 210, 255)
-        elif ratio > 0.3:
-            bar_color = (255, 200, 60)
-        else:
-            bar_color = (255, 80, 80)
-
-        fill_w = round(bar_w * ratio)
-        if fill_w > 0:
-            pygame.draw.rect(display_surface, bar_color, (bar_x, bar_y, fill_w, bar_h), border_radius=6)
-
-        # Border
-        pygame.draw.rect(display_surface, (200, 220, 255), (bar_x, bar_y, bar_w, bar_h), 2, border_radius=6)
-
-        # Label above bar
-        wave_label = "TUTORIAL" if current_wave == 0 else f"Wave {current_wave}"
-        if between_wave_timer > 0:
-            next_idx  = current_wave + 1
+            ratio      = 1.0 - (between_wave_timer / BETWEEN_WAVE_DELAY)
+            bar_col    = (60, 220, 160)
+            next_idx   = current_wave + 1
             if next_idx < len(WAVE_DATA):
-                next_label = "BOSS" if WAVE_DATA[next_idx]["boss"] else f"Wave {next_idx}"
-                sub_label  = f"Next: {next_label}"
+                nxt   = "BOSS" if WAVE_DATA[next_idx]["boss"] else f"Wave {next_idx}"
+                ltext = f"Next: {nxt}"
+                lcol  = (255, 160, 60) if WAVE_DATA[next_idx]["boss"] else (140, 255, 180)
             else:
-                sub_label = "Final wave cleared!"
-            label_surf = small_font.render(sub_label, True, (160, 255, 200))
+                ltext, lcol = "All waves done!", (140, 255, 180)
         else:
-            kill_label = f"{wave_kills} / {total}"
-            label_surf = small_font.render(f"{wave_label}   {kill_label}", True, (220, 240, 255))
-        display_surface.blit(label_surf, label_surf.get_frect(midtop=(WINDOW_WIDTH // 2, bar_y + bar_h + 4)))
+            remaining  = max(0, total - wave_kills)
+            ratio      = remaining / total if total > 0 else 0.0
+            bar_col    = (80, 210, 255) if ratio > 0.6 else (255, 200, 60) if ratio > 0.3 else (255, 80, 80)
+            ltext      = f"{wave_label}   {wave_kills} / {total}"
+            lcol       = (210, 235, 255)
 
-    # --- Harpoon cooldown bar (bottom-left) ---
-    bar_w, bar_h = 160, 14
-    bar_x, bar_y = 20, WINDOW_HEIGHT - 34
-    progress = player.cooldown_progress
-    pygame.draw.rect(display_surface, (40, 40, 40), (bar_x, bar_y, bar_w, bar_h), border_radius=4)
-    fill_color = (90, 200, 255) if progress >= 1 else (255, 170, 60)
-    pygame.draw.rect(display_surface, fill_color, (bar_x, bar_y, round(bar_w * progress), bar_h), border_radius=4)
-    pygame.draw.rect(display_surface, (255, 255, 255), (bar_x, bar_y, bar_w, bar_h), 2, border_radius=4)
-    label = font.render("HARPOON", True, (255, 255, 255))
-    display_surface.blit(label, (bar_x, bar_y - 24))
+        ls = small_font.render(ltext, True, lcol)
+        display_surface.blit(ls, ls.get_rect(midbottom=(WINDOW_WIDTH // 2, bar_y - 4)))
+        _draw_bar(bar_x, bar_y, bar_w, bar_h, ratio, bar_col)
 
-    # --- Wave announce flash at start of each wave ---
+    # ── Oxygen bar (bottom-left, below harpoon) ──────────────────────────
+    o2_bar_w, o2_bar_h = 200, 16
+    o2_bar_x, o2_bar_y = 16, WINDOW_HEIGHT - 90
+    o2_ratio   = player.oxygen / player.max_oxygen
+    o2_col     = (0, 200, 255) if o2_ratio > 0.3 else (255, 80, 80)
+    _draw_panel(o2_bar_x - 10, o2_bar_y - 30, o2_bar_w + 20, o2_bar_h + 42, alpha=180, radius=10)
+    _draw_bar(o2_bar_x, o2_bar_y, o2_bar_w, o2_bar_h, o2_ratio, o2_col)
+    o2_lbl = small_font.render("OXYGEN", True, (180, 230, 255))
+    display_surface.blit(o2_lbl, o2_lbl.get_rect(midbottom=(o2_bar_x + o2_bar_w // 2, o2_bar_y - 4)))
+    # flashing warning when low
+    if o2_ratio < 0.25 and int(pygame.time.get_ticks() / 400) % 2 == 0:
+        warn = small_font.render("LOW OXYGEN!", True, (255, 80, 80))
+        display_surface.blit(warn, warn.get_rect(midleft=(o2_bar_x + o2_bar_w + 10, o2_bar_y + o2_bar_h // 2)))
+
+    # ── Harpoon cooldown (bottom-left) ───────────────────────────────────
+    bar_w, bar_h = 200, 16
+    bar_x, bar_y = 16, WINDOW_HEIGHT - 44
+    progress     = player.cooldown_progress
+    _draw_panel(bar_x - 10, bar_y - 30, bar_w + 20, bar_h + 42, alpha=180, radius=10)
+    ready        = progress >= 1.0
+    bar_col      = (60, 210, 255) if ready else (255, 160, 50)
+    _draw_bar(bar_x, bar_y, bar_w, bar_h, progress, bar_col)
+    lbl          = small_font.render("HARPOON" if not ready else "READY", True,
+                                     (200, 240, 255) if not ready else (120, 255, 180))
+    display_surface.blit(lbl, lbl.get_rect(midbottom=(bar_x + bar_w // 2, bar_y - 4)))
+    # tiny cannon icon to the left of the bar
+    pygame.draw.rect(display_surface, (160, 130, 80),  (bar_x - 8, bar_y + 4, 8, 8), border_radius=2)
+    pygame.draw.rect(display_surface, (200, 170, 110), (bar_x - 8, bar_y + 4, 8, 8), 1, border_radius=2)
+
+    # ── Wave start flash ─────────────────────────────────────────────────
     if wave_announce_timer > 0 and between_wave_timer == 0 and player.alive and not level_complete:
-        alpha = min(255, int(wave_announce_timer / 2.5 * 255))
-        wave_label = "TUTORIAL" if current_wave == 0 else f"Wave {current_wave}"
-        ann_surf = big_font.render(wave_label, True, (120, 220, 255))
-        ann_surf.set_alpha(alpha)
-        display_surface.blit(ann_surf, ann_surf.get_frect(center=(WINDOW_WIDTH // 2, WINDOW_HEIGHT // 2)))
+        t     = wave_announce_timer / 2.5
+        alpha = min(255, int(t * 255))
+        wlbl  = "TUTORIAL" if current_wave == 0 else f"WAVE  {current_wave}"
+        # black letterbox bars
+        bar_s = pygame.Surface((WINDOW_WIDTH, 70), pygame.SRCALPHA)
+        bar_s.fill((0, 0, 0, int(t * 200)))
+        display_surface.blit(bar_s, (0, WINDOW_HEIGHT // 2 - 60))
+        display_surface.blit(bar_s, (0, WINDOW_HEIGHT // 2 + 10))
+        ws = menu_title_font.render(wlbl, True, (100, 210, 255))
+        ws.set_alpha(alpha)
+        display_surface.blit(ws, ws.get_rect(center=(WINDOW_WIDTH // 2, WINDOW_HEIGHT // 2 - 12)))
 
-    # --- Boss announce flash ---
+    # ── Boss announce ─────────────────────────────────────────────────────
     if boss_announce_timer > 0 and player.alive and not level_complete:
-        progress = boss_announce_timer / 3.5          # 1.0 → 0.0
-        alpha    = min(255, int(progress * 255))
-        # dark cinematic panel behind the text
-        panel = pygame.Surface((WINDOW_WIDTH, 160), pygame.SRCALPHA)
-        panel.fill((0, 0, 0, min(200, int(progress * 220))))
-        display_surface.blit(panel, (0, WINDOW_HEIGHT // 2 - 80))
-        # main name — golden, large
-        name_surf = big_font.render("THE SHARKFATHER", True, (255, 210, 60))
-        name_surf.set_alpha(alpha)
-        display_surface.blit(name_surf, name_surf.get_frect(center=(WINDOW_WIDTH // 2, WINDOW_HEIGHT // 2 - 18)))
-        # subtitle
-        sub_surf = title_font.render("has arrived...", True, (220, 170, 50))
-        sub_surf.set_alpha(alpha)
-        display_surface.blit(sub_surf, sub_surf.get_frect(center=(WINDOW_WIDTH // 2, WINDOW_HEIGHT // 2 + 38)))
+        t     = boss_announce_timer / 3.5
+        alpha = min(255, int(t * 255))
+        bar_s = pygame.Surface((WINDOW_WIDTH, 180), pygame.SRCALPHA)
+        bar_s.fill((0, 0, 0, int(t * 210)))
+        display_surface.blit(bar_s, (0, WINDOW_HEIGHT // 2 - 90))
+        ns = menu_title_font.render("THE SHARKFATHER", True, (255, 205, 50))
+        ns.set_alpha(alpha)
+        display_surface.blit(ns, ns.get_rect(center=(WINDOW_WIDTH // 2, WINDOW_HEIGHT // 2 - 22)))
+        ss = title_font.render("has arrived...", True, (220, 160, 40))
+        ss.set_alpha(alpha)
+        display_surface.blit(ss, ss.get_rect(center=(WINDOW_WIDTH // 2, WINDOW_HEIGHT // 2 + 36)))
 
-    # --- End states ---
+    # ── Boss warning ticker ───────────────────────────────────────────────
+    if boss_spawned and not level_complete and boss_announce_timer <= 0:
+        pulse_a = int(190 + 65 * sin(pygame.time.get_ticks() / 250))
+        ws = small_font.render("!  THE SHARKFATHER is guarding a map fragment!", True, (255, 200, 60))
+        ws.set_alpha(pulse_a)
+        display_surface.blit(ws, ws.get_rect(midtop=(WINDOW_WIDTH // 2, 8)))
+
+    # ── End screens ───────────────────────────────────────────────────────
     if not player.alive:
-        over_surf = big_font.render("YOU DIED", True, (255, 60, 60))
-        display_surface.blit(over_surf, over_surf.get_frect(center=(WINDOW_WIDTH // 2, WINDOW_HEIGHT // 2 - 20)))
-        restart_surf = font.render("Press R to restart", True, (255, 255, 255))
-        display_surface.blit(restart_surf, restart_surf.get_frect(center=(WINDOW_WIDTH // 2, WINDOW_HEIGHT // 2 + 40)))
+        _draw_end_screen("YOU DIED", (220, 50, 50), "Press  R  to try again")
     elif level_complete:
-        over_surf = big_font.render("LEVEL COMPLETE", True, (90, 220, 140))
-        display_surface.blit(over_surf, over_surf.get_frect(center=(WINDOW_WIDTH // 2, WINDOW_HEIGHT // 2 - 20)))
-        restart_surf = font.render("Press R to play again", True, (255, 255, 255))
-        display_surface.blit(restart_surf, restart_surf.get_frect(center=(WINDOW_WIDTH // 2, WINDOW_HEIGHT // 2 + 40)))
-    elif boss_spawned and not level_complete:
-        warning_surf = font.render("THE SHARKFATHER is guarding a map fragment!", True, (255, 200, 80))
-        display_surface.blit(warning_surf, warning_surf.get_frect(midtop=(WINDOW_WIDTH // 2, 34)))
+        _draw_end_screen("LEVEL COMPLETE", (60, 220, 130), "Press  R  to play again")
+
+
+def _draw_end_screen(title_text, title_col, sub_text):
+    """Full-screen cinematic end overlay."""
+    # dim the game world
+    dim = pygame.Surface((WINDOW_WIDTH, WINDOW_HEIGHT), pygame.SRCALPHA)
+    dim.fill((0, 0, 0, 160))
+    display_surface.blit(dim, (0, 0))
+
+    # centre panel
+    pw, ph = 600, 220
+    _draw_panel((WINDOW_WIDTH - pw) // 2, (WINDOW_HEIGHT - ph) // 2, pw, ph,
+                alpha=220, radius=16)
+
+    # coloured glow behind title
+    gw = pygame.Surface((pw - 40, 80), pygame.SRCALPHA)
+    gw.fill((*title_col, 55))
+    display_surface.blit(gw, gw.get_rect(center=(WINDOW_WIDTH // 2, WINDOW_HEIGHT // 2 - 30)))
+
+    ts = big_font.render(title_text, True, title_col)
+    display_surface.blit(ts, ts.get_rect(center=(WINDOW_WIDTH // 2, WINDOW_HEIGHT // 2 - 28)))
+
+    ss = font.render(sub_text, True, (200, 220, 240))
+    display_surface.blit(ss, ss.get_rect(center=(WINDOW_WIDTH // 2, WINDOW_HEIGHT // 2 + 46)))
 
 # ---------------------------------------------------------------------------
 # Reset
@@ -1702,7 +1877,10 @@ def reset_game():
     for sprite in list(bubble_sprites):       sprite.kill()
     for sprite in list(fragment_sprites):     sprite.kill()
     for sprite in list(healthbubble_sprites): sprite.kill()
+    for sprite in list(oxygentank_sprites):   sprite.kill()
     player.health = player.max_health
+    player.oxygen        = player.max_oxygen
+    player.oxygen_empty  = False
     player.alive  = True
     player.rect.center = (WORLD_BOUNDS.centerx, WORLD_BOUNDS.centery)
     player.invincible_until = 0
@@ -1726,11 +1904,11 @@ credits_role_font= pygame.font.SysFont("arial", 22)
 # Menu background — animated underwater scene reusing background_surf
 # ---------------------------------------------------------------------------
 def _draw_menu_bg(tick):
-    """Draw the animated menu background (scrolling background + drifting sharks)."""
-    display_surface.blit(background_surf, (0, 0))
-    # dark overlay to make text readable
+    """Draw the animated menu background using web_back.png (top crop)."""
+    display_surface.blit(menu_bg_surf, (0, 0))
+    # Subtle dark overlay to keep text readable without killing the image
     overlay = pygame.Surface((WINDOW_WIDTH, WINDOW_HEIGHT), pygame.SRCALPHA)
-    overlay.fill((0, 10, 30, 160))
+    overlay.fill((0, 8, 22, 110))
     display_surface.blit(overlay, (0, 0))
 
 
@@ -1770,29 +1948,51 @@ class MenuShark:
 # Button helper
 # ---------------------------------------------------------------------------
 class MenuButton:
-    PAD_X, PAD_Y = 48, 14
-    NORMAL_COL  = (20,  60, 100, 210)
-    HOVER_COL   = (40, 120, 180, 230)
-    BORDER_COL  = (100, 200, 255, 255)
-    TEXT_COL    = (220, 240, 255)
-    TEXT_HOV    = (255, 255, 255)
+    PAD_X, PAD_Y   = 56, 16
 
     def __init__(self, label, center):
         self.label  = label
-        self._surf  = menu_button_font.render(label, True, self.TEXT_COL)
-        tw, th      = self._surf.get_size()
+        tw, th      = menu_button_font.size(label)
         self.rect   = pygame.Rect(0, 0, tw + self.PAD_X * 2, th + self.PAD_Y * 2)
         self.rect.center = center
 
     def draw(self, hover=False):
-        col = self.HOVER_COL if hover else self.NORMAL_COL
-        s   = pygame.Surface(self.rect.size, pygame.SRCALPHA)
-        s.fill(col)
-        pygame.draw.rect(s, self.BORDER_COL, s.get_rect(), 2, border_radius=8)
-        display_surface.blit(s, self.rect.topleft)
-        tcol = self.TEXT_HOV if hover else self.TEXT_COL
-        ts   = menu_button_font.render(self.label, True, tcol)
-        display_surface.blit(ts, ts.get_rect(center=self.rect.center))
+        r = self.rect
+        # drop shadow
+        shadow = pygame.Surface((r.w + 4, r.h + 4), pygame.SRCALPHA)
+        pygame.draw.rect(shadow, (0, 0, 0, 80), (4, 4, r.w, r.h), border_radius=10)
+        display_surface.blit(shadow, (r.x - 2, r.y - 2))
+
+        # main body — two-tone gradient via two rects
+        body = pygame.Surface((r.w, r.h), pygame.SRCALPHA)
+        if hover:
+            top_col  = (50, 130, 200, 235)
+            bot_col  = (25,  80, 145, 235)
+            rim_col  = (120, 210, 255, 255)
+        else:
+            top_col  = (18,  55, 110, 210)
+            bot_col  = (10,  30,  70, 210)
+            rim_col  = (70, 150, 220, 200)
+
+        pygame.draw.rect(body, top_col, (0,        0, r.w, r.h // 2), border_radius=10)
+        pygame.draw.rect(body, bot_col, (0, r.h // 2, r.w, r.h // 2), border_radius=10)
+        # unify border radius on bottom half
+        pygame.draw.rect(body, bot_col, (0, r.h // 2 - 10, r.w, 10))
+
+        # inner glow line at top
+        if hover:
+            pygame.draw.line(body, (180, 230, 255, 120), (12, 3), (r.w - 12, 3), 1)
+
+        pygame.draw.rect(body, rim_col, (0, 0, r.w, r.h), 2, border_radius=10)
+        display_surface.blit(body, r.topleft)
+
+        # label with subtle shadow
+        tcol = (255, 255, 255) if hover else (200, 230, 255)
+        sh_s = menu_button_font.render(self.label, True, (0, 0, 0))
+        sh_s.set_alpha(80)
+        display_surface.blit(sh_s, sh_s.get_rect(center=(r.centerx + 1, r.centery + 1)))
+        ts = menu_button_font.render(self.label, True, tcol)
+        display_surface.blit(ts, ts.get_rect(center=r.center))
 
     def is_hovered(self, mouse_pos):
         return self.rect.collidepoint(mouse_pos)
@@ -1934,6 +2134,124 @@ def run_options():
         pygame.display.update()
 
 
+def run_pause_menu():
+    """
+    Pause screen — blurs/dims the frozen game frame and shows a
+    polished cinematic overlay.  Returns when the player resumes.
+    """
+    frozen  = display_surface.copy()
+
+    cx      = WINDOW_WIDTH  // 2
+    cy      = WINDOW_HEIGHT // 2
+    btn_resume  = MenuButton("Resume",  (cx, cy - 20))
+    btn_options = MenuButton("Options", (cx, cy + 70))
+    btn_quit    = MenuButton("Quit",    (cx, cy + 160))
+    buttons     = [btn_resume, btn_options, btn_quit]
+
+    shark   = MenuShark()
+    clock2  = pygame.time.Clock()
+    pulse   = 0.0
+    enter_t = 0.0          # tracks a short fade-in on open
+
+    while True:
+        dt      = clock2.tick(60) / 1000
+        pulse  += dt * 1.8
+        enter_t = min(1.0, enter_t + dt * 4)   # 0→1 in 0.25 s
+        mouse   = pygame.mouse.get_pos()
+
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                pygame.quit(); raise SystemExit
+            if event.type == pygame.KEYDOWN:
+                if event.key in (pygame.K_ESCAPE, pygame.K_r):
+                    return 'resume'
+            if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+                if btn_resume.is_hovered(mouse):
+                    return 'resume'
+                if btn_options.is_hovered(mouse):
+                    run_options()
+                if btn_quit.is_hovered(mouse):
+                    pygame.quit(); raise SystemExit
+
+        #shark.update(dt)
+
+        # ── frozen game frame ────────────────────────────────────────────
+        display_surface.blit(frozen, (0, 0))
+
+        # ── vignette / depth-of-field sim: darken edges, blur centre ────
+        vign = pygame.Surface((WINDOW_WIDTH, WINDOW_HEIGHT), pygame.SRCALPHA)
+        # uniform dark wash
+        vign.fill((0, 5, 20, int(155 * enter_t)))
+        # darker edges
+        edge = 200
+        for i in range(edge):
+            a = int(80 * (1 - i / edge) * enter_t)
+            pygame.draw.rect(vign, (0, 0, 0, a), (i, i, WINDOW_WIDTH - i*2, WINDOW_HEIGHT - i*2), 1)
+        display_surface.blit(vign, (0, 0))
+
+        # ── animated shark behind the panel ──────────────────────────────
+        #shark.draw()
+
+        # ── decorative horizontal lines ───────────────────────────────────
+        line_alpha = int(60 * enter_t)
+        for ly in range(0, WINDOW_HEIGHT, 6):
+            pygame.draw.line(display_surface, (20, 60, 120, line_alpha),
+                             (0, ly), (WINDOW_WIDTH, ly))
+
+        # ── centre panel ─────────────────────────────────────────────────
+        pw, ph  = 460, 380
+        px, py  = cx - pw // 2, cy - ph // 2
+        panel   = pygame.Surface((pw, ph), pygame.SRCALPHA)
+
+        # outer shadow
+        sh = pygame.Surface((pw + 16, ph + 16), pygame.SRCALPHA)
+        pygame.draw.rect(sh, (0, 0, 0, 90), (8, 8, pw, ph), border_radius=18)
+        display_surface.blit(sh, (px - 8, py - 8))
+
+        # panel body (dark navy)
+        pygame.draw.rect(panel, (8, 18, 50, int(230 * enter_t)),
+                         (0, 0, pw, ph), border_radius=16)
+        # inner top highlight strip
+        pygame.draw.rect(panel, (60, 140, 220, 40), (2, 2, pw - 4, 4), border_radius=14)
+        # border glow (double ring)
+        glow_a = int((150 + 60 * sin(pulse)) * enter_t)
+        pygame.draw.rect(panel, (50, 140, 220, glow_a), (0, 0, pw, ph), 2, border_radius=16)
+        pygame.draw.rect(panel, (100, 190, 255, glow_a // 2), (3, 3, pw - 6, ph - 6), 1, border_radius=14)
+        display_surface.blit(panel, (px, py))
+
+        # ── divider line under title ──────────────────────────────────────
+        div_y = py + 105
+        div_alpha = int(180 * enter_t)
+        div_surf = pygame.Surface((pw - 40, 2), pygame.SRCALPHA)
+        div_surf.fill((80, 170, 255, div_alpha))
+        display_surface.blit(div_surf, (px + 20, div_y))
+
+        # ── title ─────────────────────────────────────────────────────────
+        # glow halo
+        gh = pygame.Surface((380, 72), pygame.SRCALPHA)
+        gh_a = int((60 + 30 * sin(pulse)) * enter_t)
+        gh.fill((40, 120, 210, gh_a))
+        display_surface.blit(gh, gh.get_rect(center=(cx, py + 62)))
+
+        ts = menu_title_font.render("PAUSED", True, (220, 240, 255))
+        ts.set_alpha(int(255 * enter_t))
+        display_surface.blit(ts, ts.get_rect(center=(cx, py + 62)))
+
+        # ── buttons ───────────────────────────────────────────────────────
+        for btn in buttons:
+            # fade in with enter_t
+            btn.rect.x = cx - btn.rect.w // 2
+            btn.draw(btn.is_hovered(mouse))
+
+        # ── bottom hint ───────────────────────────────────────────────────
+        hint_a = int((140 + 60 * sin(pulse * 1.5)) * enter_t)
+        hint   = menu_small_font.render("ESC  or  R  to resume", True, (120, 170, 210))
+        hint.set_alpha(hint_a)
+        display_surface.blit(hint, hint.get_rect(midbottom=(cx, py + ph - 12)))
+
+        pygame.display.update()
+
+
 def run_main_menu():
     """
     Animated start screen.
@@ -1946,11 +2264,11 @@ def run_main_menu():
     btn_quit    = MenuButton("Quit",       (cx, 630))
     buttons     = [btn_start, btn_options, btn_credits, btn_quit]
 
-    shark       = MenuShark()
+    #shark       = MenuShark()
     # second shark slightly behind, different y
-    shark2      = MenuShark()
-    shark2.x    = uniform(-400, -100)
-    shark2.y    = uniform(WINDOW_HEIGHT * 0.5, WINDOW_HEIGHT * 0.8)
+    #shark2      = MenuShark()
+    #shark2.x    = uniform(-400, -100)
+    #shark2.y    = uniform(WINDOW_HEIGHT * 0.5, WINDOW_HEIGHT * 0.8)
 
     clock2      = pygame.time.Clock()
     bg_x        = 0.0   # slow pan
@@ -1979,30 +2297,50 @@ def run_main_menu():
                 if event.key == pygame.K_ESCAPE:
                     pygame.quit(); raise SystemExit
 
-        shark.update(dt)
-        shark2.update(dt)
+        #shark.update(dt)
+        #shark2.update(dt)
 
         # ── background ──────────────────────────────────────────────────────
         _draw_menu_bg(pygame.time.get_ticks())
-        shark2.draw()
-        shark.draw()
+        #shark2.draw()
+        #shark.draw()
 
         # ── title ────────────────────────────────────────────────────────────
-        # glowing halo behind title text
-        glow_a = int(80 + 40 * sin(pulse))
-        glow_s = pygame.Surface((640, 120), pygame.SRCALPHA)
-        glow_s.fill((40, 120, 200, glow_a))
-        display_surface.blit(glow_s, glow_s.get_rect(center=(cx, 190)))
+        # ── title image (title.png) or text fallback ─────────────────────
+        if menu_title_img:
+            # Gentle bob up/down
+            bob_y = round(sin(pulse) * 5)
+            t_rect = menu_title_img.get_rect(center=(cx, 155 + bob_y))
 
-        title_s = menu_title_font.render("UNDERWATER", True, (255, 255, 255))
-        sub_s   = menu_title_font.render("HARPOON",    True, (80,  210, 255))
-        display_surface.blit(title_s, title_s.get_rect(center=(cx, 160)))
-        display_surface.blit(sub_s,   sub_s.get_rect(  center=(cx, 240)))
+            # Drop shadow
+            sh = pygame.Surface(menu_title_img.get_size(), pygame.SRCALPHA)
+            sh.blit(menu_title_img, (0, 0))
+            sh.fill((0, 0, 0, 100), special_flags=pygame.BLEND_RGBA_MULT)
+            display_surface.blit(sh, (t_rect.x + 3, t_rect.y + 4))
+
+            # Glow halo behind the image
+            glow_a = int(50 + 30 * sin(pulse))
+            glow_s = pygame.Surface((menu_title_img.get_width() + 40,
+                                     menu_title_img.get_height() + 20), pygame.SRCALPHA)
+            glow_s.fill((40, 140, 220, glow_a))
+            display_surface.blit(glow_s, glow_s.get_rect(center=(cx, 155 + bob_y)))
+
+            display_surface.blit(menu_title_img, t_rect)
+        else:
+            # Text fallback if title.png is missing
+            glow_a = int(80 + 40 * sin(pulse))
+            glow_s = pygame.Surface((640, 120), pygame.SRCALPHA)
+            glow_s.fill((40, 120, 200, glow_a))
+            display_surface.blit(glow_s, glow_s.get_rect(center=(cx, 165)))
+            t1 = menu_title_font.render("SEA",   True, (255, 255, 255))
+            t2 = menu_title_font.render("BOUND", True, (80, 210, 255))
+            display_surface.blit(t1, t1.get_rect(center=(cx, 130)))
+            display_surface.blit(t2, t2.get_rect(center=(cx, 210)))
 
         # subtitle flicker
         if int(pulse * 2) % 4 != 0:
-            press_s = menu_small_font.render("Press ENTER or click Start Game", True, (160, 200, 220))
-            display_surface.blit(press_s, press_s.get_rect(center=(cx, 302)))
+            press_s = menu_small_font.render("Press ENTER or click Start Game", True, (200, 230, 255))
+            display_surface.blit(press_s, press_s.get_rect(center=(cx, 225)))
 
         # ── buttons ──────────────────────────────────────────────────────────
         for btn in buttons:
@@ -2042,6 +2380,13 @@ while running:
             hy = randint(WORLD_BOUNDS.top  + margin, FLOOR_Y - margin)
             HealthBubble((hx, hy), (all_sprites, healthbubble_sprites))
 
+        # --- oxygen tank spawn ---
+        if event.type == OXYGEN_TANK_EVENT and player.alive and not level_complete:
+            margin = 80
+            ox = randint(WORLD_BOUNDS.left + margin, WORLD_BOUNDS.right  - margin)
+            oy = randint(WORLD_BOUNDS.top  + margin, FLOOR_Y - margin)
+            OxygenTankPickup((ox, oy), (all_sprites, oxygentank_sprites))
+
         # --- wave shark spawning ---
         if event.type == SHARK_SPAWN_EVENT and player.alive and not level_complete and not wave_ending:
             cfg     = wave_config()
@@ -2058,6 +2403,13 @@ while running:
             # Spawn jellyfish alongside sharks (spread across first half of wave)
             if not is_boss and jellies_spawned_this_wave < cfg["jellies"]:
                 spawn_jellyfish()
+
+        # --- pause on ESC ---
+        if event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
+            run_pause_menu()
+            # Discard the time that accumulated while paused so sprites
+            # don't get a huge dt on the first frame back.
+            clock.tick(60)
 
         # --- tutorial dismiss on SPACE ---
         if event.type == pygame.KEYDOWN and event.key == pygame.K_SPACE:
@@ -2115,13 +2467,44 @@ while running:
                 break
 
     # -------------------------------------------------------------------
-    # Collect map fragment -> level complete
+    # Collect map fragment -> transition to level 2
     # -------------------------------------------------------------------
     if player.alive and not level_complete and fragment_sprites:
         collected = pygame.sprite.spritecollide(player, fragment_sprites, True)
         if collected:
             level_complete = True
             pygame.time.set_timer(SHARK_SPAWN_EVENT, 0)
+            pygame.time.set_timer(HEALTH_BUBBLE_EVENT, 0)
+
+            # ── fade-out + "LEVEL COMPLETE" splash ──────────────────────────
+            fade = pygame.Surface((WINDOW_WIDTH, WINDOW_HEIGHT))
+            fade.fill((0, 0, 0))
+            for alpha in range(0, 256, 4):
+                all_sprites.draw_all(player.rect.center)
+                draw_ui()
+                fade.set_alpha(alpha)
+                display_surface.blit(fade, (0, 0))
+                pygame.display.update()
+                clock.tick(60)
+
+            # Show "LEVEL COMPLETE" for 2 seconds
+            display_surface.fill((0, 5, 20))
+            line1 = big_font.render("LEVEL COMPLETE", True, (90, 220, 140))
+            line2 = title_font.render("Proceeding to Level 2...", True, (160, 210, 255))
+            display_surface.blit(line1, line1.get_frect(center=(WINDOW_WIDTH // 2, WINDOW_HEIGHT // 2 - 30)))
+            display_surface.blit(line2, line2.get_frect(center=(WINDOW_WIDTH // 2, WINDOW_HEIGHT // 2 + 40)))
+            pygame.display.update()
+            pygame.time.wait(2000)
+
+            # ── hand off to level2.py ────────────────────────────────────────
+            pygame.quit()
+            import subprocess, sys, os
+            level2_path = os.path.join(
+                os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+                "Fionn", "level2.py"
+            )
+            subprocess.run([sys.executable, level2_path])
+            raise SystemExit
 
     # -------------------------------------------------------------------
     # Collect health bubbles -> +1 HP (capped at max)
@@ -2131,6 +2514,17 @@ while running:
         if picked and player.health < player.max_health:
             player.health += 1
             SFX_HEALTH_PICKUP.play()
+
+    # -------------------------------------------------------------------
+    # Collect oxygen tanks -> refill oxygen + reset empty flag
+    # -------------------------------------------------------------------
+    if player.alive:
+        o2_picked = pygame.sprite.spritecollide(player, oxygentank_sprites, True)
+        if o2_picked:
+            player.oxygen       = min(player.max_oxygen,
+                                      player.oxygen + OxygenTankPickup.REFILL)
+            player.oxygen_empty = False
+            SFX_PLAYER_DIE.play()   # reuse the oxygen-tank sound
 
     # -------------------------------------------------------------------
     # Player <-> shark damage

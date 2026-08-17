@@ -908,10 +908,10 @@ class Shark(pygame.sprite.Sprite):
     BITE_FRAME      = 2        # frame index where bite damage is dealt
 
     # ── boss-only tuning ──
-    CHARGE_COOLDOWN  = 5.0     # seconds between charge sequences
+    CHARGE_COOLDOWN  = 4.0     # seconds between charge sequences
     CHARGE_WINDUP    = 0.45    # seconds of wind-up telegraph
     CHARGE_SPEED     = 1000     # px/s during each dash
-    CHARGE_DASH_DUR  = 0.45    # seconds each individual dash lasts
+    CHARGE_DASH_DUR  = 0.6    # seconds each individual dash lasts
     CHARGE_PAUSE_DUR = 0.18    # brief pause between back-and-forth dashes
     CHARGE_PASSES    = 2       # how many back-and-forth passes per sequence
     SUMMON_COOLDOWN  = 5.0
@@ -1934,6 +1934,86 @@ def run_options():
         pygame.display.update()
 
 
+def run_pause_menu():
+    """
+    Pause screen — freezes the game in place and overlays the same
+    underwater menu style.  Returns 'resume' or raises SystemExit.
+    """
+    # Grab a screenshot of the exact frame the player paused on
+    frozen = display_surface.copy()
+
+    cx          = WINDOW_WIDTH  // 2
+    btn_resume  = MenuButton("Resume",     (cx, 340))
+    btn_options = MenuButton("Options",    (cx, 430))
+    btn_quit    = MenuButton("Quit",       (cx, 520))
+    buttons     = [btn_resume, btn_options, btn_quit]
+
+    shark       = MenuShark()
+    clock2      = pygame.time.Clock()
+    pulse       = 0.0
+
+    while True:
+        dt    = clock2.tick(60) / 1000
+        pulse += dt * 2.0
+        mouse = pygame.mouse.get_pos()
+
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                pygame.quit(); raise SystemExit
+            if event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_ESCAPE:
+                    return 'resume'
+                if event.key == pygame.K_r:
+                    return 'resume'
+            if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+                if btn_resume.is_hovered(mouse):
+                    return 'resume'
+                if btn_options.is_hovered(mouse):
+                    run_options()
+                if btn_quit.is_hovered(mouse):
+                    pygame.quit(); raise SystemExit
+
+        shark.update(dt)
+
+        # ── draw frozen game frame underneath ───────────────────────────────
+        display_surface.blit(frozen, (0, 0))
+
+        # ── dark underwater tint over the frozen frame ──────────────────────
+        overlay = pygame.Surface((WINDOW_WIDTH, WINDOW_HEIGHT), pygame.SRCALPHA)
+        overlay.fill((0, 8, 25, 175))
+        display_surface.blit(overlay, (0, 0))
+
+        # ── animated shark swims behind the panel ───────────────────────────
+        #shark.draw()
+
+        # ── frosted glass panel ─────────────────────────────────────────────
+        panel_w, panel_h = 480, 340
+        panel = pygame.Surface((panel_w, panel_h), pygame.SRCALPHA)
+        panel.fill((10, 30, 65, 210))
+        pygame.draw.rect(panel, (80, 180, 255, 180), (0, 0, panel_w, panel_h), 2,
+                         border_radius=14)
+        display_surface.blit(panel, panel.get_rect(center=(cx, WINDOW_HEIGHT // 2)))
+
+        # ── "PAUSED" title ───────────────────────────────────────────────────
+        glow_a = int(80 + 40 * sin(pulse))
+        glow   = pygame.Surface((380, 80), pygame.SRCALPHA)
+        glow.fill((40, 120, 200, glow_a))
+        display_surface.blit(glow, glow.get_rect(center=(cx, 230)))
+
+        title_s = menu_title_font.render("PAUSED", True, (255, 255, 255))
+        display_surface.blit(title_s, title_s.get_rect(center=(cx, 230)))
+
+        # ── buttons ──────────────────────────────────────────────────────────
+        for btn in buttons:
+            btn.draw(btn.is_hovered(mouse))
+
+        # ── ESC hint ─────────────────────────────────────────────────────────
+        hint = menu_small_font.render("ESC / R  to resume", True, (130, 170, 200))
+        display_surface.blit(hint, hint.get_rect(midbottom=(cx, WINDOW_HEIGHT - 18)))
+
+        pygame.display.update()
+
+
 def run_main_menu():
     """
     Animated start screen.
@@ -1994,8 +2074,8 @@ def run_main_menu():
         glow_s.fill((40, 120, 200, glow_a))
         display_surface.blit(glow_s, glow_s.get_rect(center=(cx, 190)))
 
-        title_s = menu_title_font.render("UNDERWATER", True, (255, 255, 255))
-        sub_s   = menu_title_font.render("HARPOON",    True, (80,  210, 255))
+        title_s = menu_title_font.render("SEA", True, (255, 255, 255))
+        sub_s   = menu_title_font.render("BOUND",    True, (80,  210, 255))
         display_surface.blit(title_s, title_s.get_rect(center=(cx, 160)))
         display_surface.blit(sub_s,   sub_s.get_rect(  center=(cx, 240)))
 
@@ -2058,6 +2138,13 @@ while running:
             # Spawn jellyfish alongside sharks (spread across first half of wave)
             if not is_boss and jellies_spawned_this_wave < cfg["jellies"]:
                 spawn_jellyfish()
+
+        # --- pause on ESC ---
+        if event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
+            run_pause_menu()
+            # Discard the time that accumulated while paused so sprites
+            # don't get a huge dt on the first frame back.
+            clock.tick(60)
 
         # --- tutorial dismiss on SPACE ---
         if event.type == pygame.KEYDOWN and event.key == pygame.K_SPACE:

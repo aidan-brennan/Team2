@@ -40,10 +40,20 @@ tentacle_ceiling = pygame.transform.flip(tentacle, False, True)
 background = pygame.image.load("images/cave.png")
 background = pygame.transform.smoothscale(background, (WIDTH, HEIGHT)) 
  
-jerry = pygame.image.load('images/jerryharpoon.png')
-jerry = pygame.transform.smoothscale(jerry, diver_size)  
-jerry = pygame.transform.rotate(jerry, angle=270)
-jerry = pygame.transform.flip(jerry, False, True)
+# load and orient animation frames (same transforms as the original jerry image)
+def _load_diver_frame(path):
+    img = pygame.image.load(path)
+    img = pygame.transform.smoothscale(img, diver_size)
+  
+   
+    return img
+
+diver_frames = [
+    _load_diver_frame('images/animation1d.png'),
+    _load_diver_frame('images/animation2d.png'),
+    _load_diver_frame('images/animation3d.png'),
+    _load_diver_frame('images/animation4d.png'),
+]
 
 
 
@@ -54,28 +64,40 @@ font_small = pygame.font.SysFont(None, 32)
  
  
 class diver:
+    FRAME_DURATION = 0.18   # seconds per frame (~12 fps animation)
+
     def __init__(self):
         self.x = diver_x
         self.y = HEIGHT // 2
         self.velocity_y = 0
         self.radius = diver_radius
         self.angle = 0
- 
+        self.frame_index = 0
+        self.frame_timer = 0.0
+
     def swim(self):
         self.velocity_y = Swim_strength
- 
-    def update(self):
+
+    def update(self, dt=1/60):
         self.velocity_y += Gravity
         self.velocity_y = min(self.velocity_y, Max_fall_speed)
         self.y += self.velocity_y
-        self.angle = max(-5, min(100, -self.velocity_y * 4))
- 
+
+        # tilt: nose up when rising, nose down when falling
+        self.angle = max(-30, min(25, -self.velocity_y * 4))
+
+        # advance animation frame
+        self.frame_timer += dt
+        if self.frame_timer >= self.FRAME_DURATION:
+            self.frame_timer -= self.FRAME_DURATION
+            self.frame_index = (self.frame_index + 1) % len(diver_frames)
+
     def draw(self, surface):
-        if jerry is not None:
-            rotated = pygame.transform.rotate(jerry, self.angle)
-            rect = rotated.get_rect(center=(self.x, int(self.y)))
-            surface.blit(rotated, rect)
- 
+        frame = diver_frames[self.frame_index]
+        rotated = pygame.transform.rotate(frame, self.angle)
+        rect = rotated.get_rect(center=(self.x, int(self.y)))
+        surface.blit(rotated, rect)
+
     def get_rect(self):
         return pygame.Rect(self.x - self.radius, self.y - self.radius, self.radius * 2, self.radius * 2)
  
@@ -244,7 +266,7 @@ def main():
             Diver.swim()
 
         if not game_over and not level_complete and started:
-            Diver.update()
+            Diver.update(dt)
 
             # scroll background
             bg_x -= tentacle_speed

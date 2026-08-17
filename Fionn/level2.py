@@ -509,6 +509,44 @@ def draw_background(surface, bg_x):
         surface.blit(background, (bg_x + WIDTH, 0))
 
 
+def _draw_panel(surface, x, y, w, h, alpha=200, radius=10):
+    """Dark frosted panel with a subtle blue rim — copied from level1."""
+    s = pygame.Surface((w, h), pygame.SRCALPHA)
+    pygame.draw.rect(s, (8, 18, 45, alpha),  (0, 0, w, h), border_radius=radius)
+    pygame.draw.rect(s, (60, 140, 220, 160), (0, 0, w, h), 2, border_radius=radius)
+    surface.blit(s, (x, y))
+
+
+def _draw_bar(surface, x, y, w, h, ratio, fill_col, bg_col=(30, 30, 55),
+              border_col=(180, 210, 255), radius=6):
+    """Generic rounded progress bar — copied from level1."""
+    pygame.draw.rect(surface, bg_col,    (x, y, w, h), border_radius=radius)
+    fw = max(0, round(w * ratio))
+    if fw:
+        pygame.draw.rect(surface, fill_col, (x, y, fw, h), border_radius=radius)
+    pygame.draw.rect(surface, border_col, (x, y, w, h), 2, border_radius=radius)
+
+
+def draw_oxygen_bar(surface, oxygen, max_oxygen):
+    """
+    Oxygen bar styled exactly like level1's oxygen bar.
+    Positioned bottom-left.
+    """
+    small_font_o2 = pygame.font.SysFont("arial", 22)
+    o2_bar_w, o2_bar_h = 200, 16
+    o2_bar_x, o2_bar_y = 16, HEIGHT - 70
+    o2_ratio = oxygen / max_oxygen if max_oxygen > 0 else 0.0
+    o2_col   = (0, 200, 255) if o2_ratio > 0.3 else (255, 80, 80)
+    _draw_panel(surface, o2_bar_x - 10, o2_bar_y - 30, o2_bar_w + 20, o2_bar_h + 42, alpha=180, radius=10)
+    _draw_bar(surface, o2_bar_x, o2_bar_y, o2_bar_w, o2_bar_h, o2_ratio, o2_col)
+    o2_lbl = small_font_o2.render("OXYGEN", True, (180, 230, 255))
+    surface.blit(o2_lbl, o2_lbl.get_rect(midbottom=(o2_bar_x + o2_bar_w // 2, o2_bar_y - 4)))
+    # flashing low-oxygen warning
+    if o2_ratio < 0.25 and int(pygame.time.get_ticks() / 400) % 2 == 0:
+        warn = small_font_o2.render("LOW OXYGEN!", True, (255, 80, 80))
+        surface.blit(warn, warn.get_rect(midleft=(o2_bar_x + o2_bar_w + 10, o2_bar_y + o2_bar_h // 2)))
+
+
 def draw_text_center(surface, text, font, color, y):
     rendered = font.render(text, True, color)
     rect = rendered.get_rect(center=(WIDTH // 2, y))
@@ -638,7 +676,7 @@ def main():
             map_fragment.draw(screen)
         Diver.draw(screen)
         oxygen_system.draw(screen)
-        oxygen_system.draw_bar(screen)
+        draw_oxygen_bar(screen, oxygen_system.oxygen, oxygen_system.max_oxygen)
 
         draw_text_center(screen, str(score), font_big, (255, 255, 255), 60)
 

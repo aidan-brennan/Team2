@@ -78,19 +78,67 @@ IMAGES_DIR = join(BASE_DIR, "..", "Images")
 background_img = pygame.image.load(join(IMAGES_DIR, "shipwreck.png")).convert()
 background_img = pygame.transform.scale(background_img, (WIDTH, HEIGHT))
 
-# Jerry - two frames for walking animation
-# convert_alpha() keeps the transparent parts of the image
+# =============================================================
+# JERRY NORMAL WALKING FRAMES
+# =============================================================
+# Two frames that alternate while Jerry is moving.
+# Frame 1 = walking_jerry1.png  (leg position A)
+# Frame 2 = jerry_walk1.jpg     (leg position B — different pose)
+#
+# The jpg has a white background. We convert it to RGBA and then
+# replace every near-white pixel with transparent so it looks clean.
+
+def remove_white_background(surface):
+    # Convert to a format that supports per-pixel alpha
+    surface = surface.convert_alpha()
+    w, h = surface.get_size()
+    for x in range(w):
+        for y in range(h):
+            r, g, b, a = surface.get_at((x, y))
+            # If the pixel is close to white, make it transparent
+            if r > 220 and g > 220 and b > 220:
+                surface.set_at((x, y), (r, g, b, 0))
+    return surface
+
 jerry_frame1 = pygame.image.load(join(IMAGES_DIR, "walking_jerry1.png")).convert_alpha()
 jerry_frame1 = pygame.transform.scale(jerry_frame1, (85, 110))
-jerry_frame1.set_colorkey(WHITE)   # make pure white pixels transparent
+jerry_frame1.set_colorkey(WHITE)
 
-jerry_frame2 = pygame.image.load(join(IMAGES_DIR, "walking_jerry1.png")).convert_alpha()
-jerry_frame2 = pygame.transform.scale(jerry_frame2, (85, 110))
-jerry_frame2.set_colorkey(WHITE)
+# Load the jpg, scale it, then strip the white background pixel by pixel
+jerry_frame2_raw = pygame.image.load(join(IMAGES_DIR, "jerry_walk1.jpg")).convert()
+jerry_frame2_raw = pygame.transform.scale(jerry_frame2_raw, (85, 110))
+jerry_frame2     = remove_white_background(jerry_frame2_raw)
 
-# Pre-create the left-facing versions so we don't flip every frame
 jerry_frame1_left = pygame.transform.flip(jerry_frame1, True, False)
 jerry_frame2_left = pygame.transform.flip(jerry_frame2, True, False)
+
+# =============================================================
+# JERRY SWORD-IDLE AND SWORD-WALKING FRAMES
+# =============================================================
+# When Jerry has his sword out (after pressing SPACE) but is NOT
+# swinging, we show a "sword held" idle pose.
+# When he IS moving with the sword held, we animate between two
+# sword-walk frames, exactly like the normal walking animation.
+#
+# jerryharpoon-r.png  = Jerry facing right holding sword (idle/walk frame A)
+# jerryharpoon-l.png  = Jerry facing left  holding sword (idle/walk frame A)
+# We use these as both the idle pose AND both walk frames so the
+# sword stays visible.  If you create a second sword-walk frame later,
+# add it to sword_walk_frames_right just like the normal walk frames.
+
+sword_idle_right = pygame.image.load(join(IMAGES_DIR, "jerryharpoon-r.png")).convert_alpha()
+sword_idle_right = pygame.transform.scale(sword_idle_right, (85, 110))
+sword_idle_right.set_colorkey(WHITE)
+
+sword_idle_left = pygame.image.load(join(IMAGES_DIR, "jerryharpoon-l.png")).convert_alpha()
+sword_idle_left = pygame.transform.scale(sword_idle_left, (85, 110))
+sword_idle_left.set_colorkey(WHITE)
+
+# Sword-walking frame list (right-facing).
+# Using the same image twice gives a subtle "bob" while walking.
+# Replace sword_idle_right with a second distinct frame if you make one.
+sword_walk_frames_right = [sword_idle_right, sword_idle_right]
+sword_walk_frames_left  = [sword_idle_left,  sword_idle_left]
 
 # =============================================================
 # SWORD SWING ANIMATION FRAMES
@@ -126,16 +174,60 @@ for frame in sword_swing_right:
     sword_swing_left.append(pygame.transform.flip(frame, True, False))
 
 # Pirate
-pirate_img = pygame.image.load(join(IMAGES_DIR, "pirate.png")).convert_alpha()
-pirate_img = pygame.transform.scale(pirate_img, (150, 120))
+pirate_img      = pygame.image.load(join(IMAGES_DIR, "pirate.png")).convert_alpha()
+pirate_img      = pygame.transform.scale(pirate_img, (150, 120))
+pirate_img_left = pygame.transform.flip(pirate_img, True, False)   # pre-flipped for left-side pirates
 
-# Bullet - small projectile fired from Jerry's gun (replaces the old harpoon)
-# Scaled to 30x12 so it looks like a small bullet rather than a large harpoon.
-# We use the harpoon.png file but scale it down to a bullet size.
-bullet_img_right = pygame.image.load(join(IMAGES_DIR, "harpoon.png")).convert_alpha()
-bullet_img_right = pygame.transform.scale(bullet_img_right, (30, 12))
-bullet_img_right.set_colorkey(WHITE)
-bullet_img_left  = pygame.transform.flip(bullet_img_right, True, False)
+# Heart collectable
+heart_img = pygame.image.load(join(IMAGES_DIR, "heart bubble.png")).convert_alpha()
+heart_img = pygame.transform.scale(heart_img, (45, 45))
+heart_img.set_colorkey(WHITE)
+
+# =============================================================
+# KEY IMAGE  (drawn in code — no external file needed)
+# =============================================================
+# We build a pixel-art golden key Surface at startup using
+# pygame.draw calls.  This means you don't need an image file.
+# The key is 40 x 20 pixels, gold coloured with a dark outline.
+
+def make_key_image():
+    surf = pygame.Surface((40, 20), pygame.SRCALPHA)
+
+    GOLD      = (255, 200,  30)
+    GOLD_DARK = (180, 130,   0)
+    OUTLINE   = ( 40,  30,   0)
+
+    # --- Key ring (circle on the left) ---
+    pygame.draw.circle(surf, OUTLINE,  ( 9, 10), 9)       # outline
+    pygame.draw.circle(surf, GOLD,     ( 9, 10), 7)       # fill
+    pygame.draw.circle(surf, GOLD_DARK,( 9, 10), 4)       # inner shadow
+    pygame.draw.circle(surf, GOLD,     ( 9, 10), 2)       # centre highlight
+
+    # --- Key shaft ---
+    pygame.draw.rect(surf, OUTLINE, (16,  7, 22,  6))     # outline rect
+    pygame.draw.rect(surf, GOLD,    (17,  8, 20,  4))     # shaft fill
+
+    # --- Key teeth (two notches on the bottom of the shaft) ---
+    pygame.draw.rect(surf, OUTLINE, (28, 12,  4,  5))
+    pygame.draw.rect(surf, GOLD,    (29, 13,  2,  4))
+
+    pygame.draw.rect(surf, OUTLINE, (22, 12,  4,  4))
+    pygame.draw.rect(surf, GOLD,    (23, 13,  2,  3))
+
+    return surf
+
+key_img = make_key_image()
+# Scale up 3× so it's clearly visible on screen (120 x 60)
+key_img = pygame.transform.scale(key_img, (120, 60))
+
+# Bullet - fired from Jerry's gun toward the mouse cursor.
+# We keep the original harpoon image at a readable size so it
+# can be rotated cleanly to point in any direction.
+# The base image faces RIGHT (0 degrees).  We rotate it each frame
+# depending on the angle the bullet is travelling.
+bullet_img_base = pygame.image.load(join(IMAGES_DIR, "harpoon.png")).convert_alpha()
+bullet_img_base = pygame.transform.scale(bullet_img_base, (40, 14))
+bullet_img_base.set_colorkey(WHITE)
 
 # Boss - the Skeleton Captain (separate image, no tint needed)
 # Scaled to 170x200: bigger than normal pirates (150x120) but not massive.
@@ -152,6 +244,119 @@ font_large  = pygame.font.SysFont("impact",  52)
 font_medium = pygame.font.SysFont("impact",  32)
 font_small  = pygame.font.SysFont("verdana", 20, bold=True)
 font_tiny   = pygame.font.SysFont("verdana", 16)
+
+
+# =============================================================
+# SOUNDS
+# =============================================================
+#
+# Sound files live in a "sounds" folder inside the Matthew folder.
+# Path:  Matthew/sounds/footstep.wav  etc.
+#
+# HOW TO ADD YOUR OWN SOUNDS:
+#   1. Create the folder:  Team2/Matthew/sounds/
+#   2. Put .wav (or .ogg) files in it with the names listed below.
+#   3. Run the game — the sounds will play automatically.
+#
+# If a sound file is missing, the game will NOT crash.
+# It just prints a message and continues without that sound.
+#
+# VOLUMES:
+#   Music volume is set lower than sound effects on purpose.
+#   Change the numbers (0.0 = silent, 1.0 = full volume):
+MUSIC_VOLUME  = 0.35   # background music volume
+SFX_VOLUME    = 0.7    # sound effects volume
+
+SOUNDS_DIR = join(BASE_DIR, "sounds")
+
+def load_sound(filename):
+    """
+    Try to load a sound file.
+    If the file is missing, return None instead of crashing.
+    The game checks for None before playing, so nothing breaks.
+    """
+    path = join(SOUNDS_DIR, filename)
+    try:
+        sound = pygame.mixer.Sound(path)
+        sound.set_volume(SFX_VOLUME)
+        return sound
+    except Exception:
+        print(f"[Sound] Could not load: {filename}  (add it to Matthew/sounds/ to hear it)")
+        return None
+
+# Initialise the mixer (this is safe to call even if init() was already called)
+pygame.mixer.pre_init(44100, -16, 2, 512)
+pygame.mixer.init()
+
+# ------------------------------------------------------------------
+# LOAD ALL SOUND EFFECTS
+# Each variable is either a pygame.mixer.Sound object or None.
+# ------------------------------------------------------------------
+
+sound_footstep    = load_sound("footstep.wav")      # plays while Jerry walks
+sound_sword_swing = load_sound("sword_swing.wav")   # when SPACE is pressed
+sound_sword_hit   = load_sound("sword_hit.wav")     # sword hits a pirate/boss
+sound_shoot       = load_sound("shoot.wav")         # when X is pressed
+sound_bullet_hit  = load_sound("bullet_hit.wav")    # bullet hits an enemy
+sound_player_hit  = load_sound("player_hit.wav")    # Jerry takes damage
+
+# Pirate death sound — loaded directly from Team2/sounds/ folder
+# (different location to the rest of the sounds)
+_pirate_die_path  = join(BASE_DIR, "..", "sounds", "pirate die.ogg")
+try:
+    sound_enemy_death = pygame.mixer.Sound(_pirate_die_path)
+    sound_enemy_death.set_volume(SFX_VOLUME)
+except Exception:
+    print("[Sound] Could not load: pirate die.ogg")
+    sound_enemy_death = None
+
+sound_boss_hit    = load_sound("boss_hit.wav")      # boss takes a hit
+sound_game_over   = load_sound("game_over.wav")     # player runs out of lives
+sound_wave_start  = load_sound("wave_start.wav")    # new wave begins
+
+def play_sound(sound):
+    """Play a sound if it loaded successfully.  Safe to call with None."""
+    if sound is not None:
+        sound.play()
+
+# ------------------------------------------------------------------
+# BACKGROUND MUSIC
+# ------------------------------------------------------------------
+# Music files also go in Matthew/sounds/.
+# The game switches tracks at certain points.
+#
+# MUSIC_GAMEPLAY  plays during normal waves
+# MUSIC_BOSS      plays during the boss fight
+# MUSIC_GAMEOVER  plays on the game over screen
+
+MUSIC_GAMEPLAY = join(SOUNDS_DIR, "music_gameplay.ogg")
+MUSIC_BOSS     = join(SOUNDS_DIR, "music_boss.ogg")
+MUSIC_GAMEOVER = join(SOUNDS_DIR, "music_gameover.ogg")
+
+def play_music(filepath):
+    """
+    Start a music track looping.
+    If the file is missing, stop any current music and continue silently.
+    """
+    try:
+        pygame.mixer.music.load(filepath)
+        pygame.mixer.music.set_volume(MUSIC_VOLUME)
+        pygame.mixer.music.play(-1)   # -1 = loop forever
+    except Exception:
+        pygame.mixer.music.stop()
+        print(f"[Music] Could not load: {filepath}  (add it to Matthew/sounds/)")
+
+def stop_music():
+    pygame.mixer.music.stop()
+
+# ------------------------------------------------------------------
+# FOOTSTEP TIMER
+# ------------------------------------------------------------------
+# We don't play the footstep sound every single frame —
+# that would be an annoying rapid-fire noise.
+# Instead we count frames and play it every FOOTSTEP_INTERVAL frames.
+FOOTSTEP_INTERVAL = 22   # frames between each footstep sound (~2.7 steps/sec at 60fps)
+footstep_timer    = 0    # counts up; reset when it reaches FOOTSTEP_INTERVAL
 
 
 # =============================================================
@@ -192,16 +397,11 @@ class Player:
         self.facing_right = True
 
         # --- Sword attack ---
-        # True while the sword swing is active
+        # True while the sword swing animation is playing
         self.attacking = False
 
         # attack_timer counts down from 25 to 0 during the swing.
-        # We have 5 animation frames, each shown for 5 ticks:
-        #   ticks 25-21 → frame 0 (wind-up)
-        #   ticks 20-16 → frame 1 (raising)
-        #   ticks 15-11 → frame 2 (mid-swing)
-        #   ticks 10-6  → frame 3 (forward)
-        #   ticks  5-1  → frame 4 (finish)
+        # 5 animation frames × 5 ticks each = 25 ticks total.
         self.attack_timer = 0
 
         # Which of the 5 sword swing images to show (0 to 4)
@@ -277,24 +477,14 @@ class Player:
             self.attack_cooldown = 35
 
     def update_attack(self):
-        # Count down the attack timer each frame
         if self.attack_timer > 0:
             self.attack_timer -= 1
-
-            # Work out which of the 5 swing frames to show.
-            # attack_timer goes from 25 down to 1.
-            # We divide the 25 ticks into 5 equal buckets of 5 ticks each.
-            # int((attack_timer - 1) / 5) gives us 4, 3, 2, 1, 0 as it counts down.
-            # We subtract from 4 to reverse it so the animation goes 0→1→2→3→4.
-            bucket = int((self.attack_timer - 1) / 5)   # 4 down to 0
-            self.sword_frame = 4 - bucket                # 0 up to 4
-
+            bucket = int((self.attack_timer - 1) / 5)
+            self.sword_frame = 4 - bucket
         else:
-            # Timer reached 0 — attack is finished
             self.attacking   = False
             self.sword_frame = 0
 
-        # Count down the cooldown between attacks
         if self.attack_cooldown > 0:
             self.attack_cooldown -= 1
 
@@ -343,30 +533,22 @@ class Player:
             return pygame.Rect(self.x + ox, self.y + oy, ow, oh)
 
     def draw(self):
-        # =======================================================
-        # WHICH SPRITE TO DRAW
-        # =======================================================
-        # While attacking: show the sword-swing animation frame.
-        # While walking:   show the normal walking frame.
-        # =======================================================
-
         if self.attacking:
-            # Pick the correct swing frame based on direction
+            # --- SWORD SWING ---
+            # Show the sword swing animation frame while attacking
             if self.facing_right:
                 image = sword_swing_right[self.sword_frame]
             else:
                 image = sword_swing_left[self.sword_frame]
-
-            # All sword frames are 85x110 — same as normal Jerry — so draw
-            # at self.x, self.y with no offset needed
             screen.blit(image, (self.x, self.y))
 
-            # Show the sword hitbox outline when testing
             if SHOW_HITBOXES:
                 pygame.draw.rect(screen, YELLOW, self.get_sword_rect(), 2)
 
         else:
-            # Normal walking / idle sprite
+            # --- NORMAL WALK / IDLE ---
+            # anim_frame is 0 or 1, toggled by update_animation()
+            # Both use walking_jerry1.png (you can add a second image later)
             if self.facing_right:
                 if self.anim_frame == 0:
                     image = jerry_frame1
@@ -377,10 +559,8 @@ class Player:
                     image = jerry_frame1_left
                 else:
                     image = jerry_frame2_left
-
             screen.blit(image, (self.x, self.y))
 
-        # Draw the body hitbox when testing
         if SHOW_HITBOXES:
             pygame.draw.rect(screen, GREEN, self.get_rect(), 2)
 
@@ -407,111 +587,165 @@ class Player:
 
 class Pirate:
 
-    def __init__(self, x, y):
+    def __init__(self, x, y, from_left=False):
         self.x = x
         self.y = y
 
-        # Full sprite size
         self.width  = 150
         self.height = 120
+        self.speed  = PIRATE_SPEED
 
-        self.speed = PIRATE_SPEED
+        # from_left = True  means this pirate came from the LEFT edge
+        # from_left = False means it came from the RIGHT edge (original behaviour)
+        self.from_left = from_left
+
+        # Use the pre-flipped image — no transform work at runtime
+        if from_left:
+            self.image = pirate_img_left   # faces RIGHT (toward screen centre)
+        else:
+            self.image = pirate_img        # faces LEFT  (toward screen centre)
+
+        # Natural movement — each pirate steers toward a point that
+        # drifts around Jerry rather than heading straight at him.
+        # offset_x/y define how far from Jerry's position the target is.
+        self.offset_x      = random.randint(-120, 120)
+        self.offset_y      = random.randint(-80,   80)
+        self.wander_timer  = 0
+        self.wander_change = random.randint(50, 130)
 
     def move_towards_player(self, player):
-        # Work out which direction Jerry is relative to this pirate
-        dx = player.x - self.x
-        dy = player.y - self.y
+        # =======================================================
+        # HOW THE NATURAL MOVEMENT WORKS
+        # =======================================================
+        # Instead of always heading straight at Jerry's exact
+        # position, each pirate chases a "wobble target" — a point
+        # that drifts around Jerry in a slow random circle.
+        #
+        # Every wander_change frames we pick new random offsets
+        # (offset_x, offset_y) from Jerry's position.  The pirate
+        # steers toward (Jerry + offset) rather than Jerry directly.
+        # This makes them approach from angles, circle around, and
+        # change pace in a way that looks far more natural.
+        # =======================================================
 
-        # Move one step towards Jerry
-        if dx > 0:
-            self.x += self.speed
-        elif dx < 0:
-            self.x -= self.speed
+        # The point we are actually steering toward this moment
+        target_x = player.x + self.offset_x
+        target_y = player.y + self.offset_y
 
-        if dy > 0:
-            self.y += self.speed
-        elif dy < 0:
-            self.y -= self.speed
+        dx = target_x - self.x
+        dy = target_y - self.y
 
-        # Stop pirate going above the top barrier or below the screen bottom
+        # Work out how far we are from that target
+        dist = math.sqrt(dx * dx + dy * dy)
+
+        if dist > 0:
+            # Normalise and apply speed so movement is smooth
+            # at any distance rather than snapping to the target
+            self.x += (dx / dist) * self.speed
+            self.y += (dy / dist) * self.speed
+
+        # Every wander_change frames, pick a fresh offset around Jerry.
+        # Large offsets = wide circling; small offsets = close approach.
+        # We also vary the speed slightly each time for extra personality.
+        self.wander_timer += 1
+        if self.wander_timer >= self.wander_change:
+            self.wander_timer  = 0
+            self.wander_change = random.randint(50, 130)
+            # Offset range: ±120px horizontally, ±80px vertically
+            self.offset_x = random.randint(-120, 120)
+            self.offset_y = random.randint(-80, 80)
+            # Occasionally speed up or slow down
+            self.speed = PIRATE_SPEED + random.uniform(-0.5, 0.8)
+
         if self.y < TOP_BARRIER:
             self.y = TOP_BARRIER
         if self.y > HEIGHT - self.height:
             self.y = HEIGHT - self.height
 
     def draw(self):
-        screen.blit(pirate_img, (self.x, self.y))
+        # self.image was set in __init__ — no flipping needed here
+        screen.blit(self.image, (self.x, self.y))
 
         if SHOW_HITBOXES:
             pygame.draw.rect(screen, RED, self.get_rect(), 2)
 
     def get_rect(self):
-        # Smaller hitbox so the transparent edges of the sprite don't count.
-        # self.x + 30  = start 30 pixels in from the left of the sprite
-        # self.y + 10  = start 10 pixels down from the top
-        # 90           = width of the hitbox
-        # 100          = height of the hitbox
         return pygame.Rect(self.x + 30, self.y + 10, 90, 100)
 
 
 # =============================================================
-# HARPOON CLASS  (now fires a small bullet)
+# HARPOON CLASS  (mouse-aimed, travels in any direction)
 # =============================================================
 #
-# How the bullet works:
-#   1. Player presses X
-#   2. A Harpoon object is created at the tip of Jerry's gun
-#   3. It is added to the harpoons list
-#   4. Every frame, harpoon.move() slides it across the screen
-#   5. We check if it hits a pirate or the boss
-#   6. If it hits something or goes off screen, we remove it
+# HOW MOUSE AIMING WORKS:
+#   When Jerry shoots (left click or X), we:
+#     1. Get the mouse position: mouse_x, mouse_y
+#     2. Work out the direction from Jerry to the mouse:
+#          dx = mouse_x - jerry_x
+#          dy = mouse_y - jerry_y
+#     3. Normalise this so the bullet always travels at the same
+#        speed regardless of how far away the cursor is:
+#          length = sqrt(dx*dx + dy*dy)
+#          vx = dx / length * HARPOON_SPEED
+#          vy = dy / length * HARPOON_SPEED
+#     4. Every frame: bullet.x += vx,  bullet.y += vy
 #
-# The variable/class is still called Harpoon so nothing else in
-# the game needs to change — only the image and size are different.
+#   The image is rotated to point in the direction of travel so
+#   it always looks like it's flying toward the cursor.
 
 class Harpoon:
 
-    def __init__(self, x, y, facing_right):
-        self.x = x
-        self.y = y
+    def __init__(self, x, y, vx, vy):
+        # Starting position (centre of the bullet)
+        self.x = float(x)
+        self.y = float(y)
 
-        # Store which direction this bullet travels
-        self.facing_right = facing_right
+        # Velocity components — how many pixels to move each frame
+        # in the x and y directions.  These are set when the bullet
+        # is fired and never change (it travels in a straight line).
+        self.vx = vx
+        self.vy = vy
 
-        # Speed is always positive; direction decides left or right
-        self.speed = HARPOON_SPEED
+        # Size of the drawn image (used for off-screen check)
+        self.width  = 40
+        self.height = 14
 
-        # Bullet drawn image size (30x12 — small bullet)
-        self.width  = 30
-        self.height = 12
+        # Work out the rotation angle from the velocity.
+        # math.atan2 gives the angle in radians; we convert to degrees.
+        # The base image faces RIGHT (0 degrees in our coordinate system).
+        # Pygame rotates ANTI-clockwise, and screen y is flipped, so we
+        # negate vy to get the correct visual rotation.
+        angle_radians = math.atan2(-vy, vx)
+        self.angle_degrees = math.degrees(angle_radians)
+
+        # Pre-rotate the image once at creation time.
+        # We don't need to rotate it every frame because the direction
+        # never changes after firing.
+        self.image = pygame.transform.rotate(bullet_img_base, self.angle_degrees)
 
     def move(self):
-        if self.facing_right:
-            self.x += self.speed
-        else:
-            self.x -= self.speed
+        self.x += self.vx
+        self.y += self.vy
 
     def is_off_screen(self):
-        # Returns True when the bullet has gone past either edge
-        if self.x > WIDTH:
+        # Remove when the centre of the bullet leaves the screen
+        if self.x < -50 or self.x > WIDTH + 50:
             return True
-        if self.x + self.width < 0:
+        if self.y < -50 or self.y > HEIGHT + 50:
             return True
         return False
 
     def draw(self):
-        if self.facing_right:
-            screen.blit(bullet_img_right, (self.x, self.y))
-        else:
-            screen.blit(bullet_img_left, (self.x, self.y))
+        # Draw the pre-rotated image centred on the bullet position
+        img_rect = self.image.get_rect(center=(int(self.x), int(self.y)))
+        screen.blit(self.image, img_rect)
 
         if SHOW_HITBOXES:
             pygame.draw.rect(screen, CYAN, self.get_rect(), 2)
 
     def get_rect(self):
-        # The collision box covers the full small bullet image.
-        # 30x12 is already small and accurate so no offset needed.
-        return pygame.Rect(self.x, self.y, self.width, self.height)
+        # Small collision box centred on the bullet
+        return pygame.Rect(int(self.x) - 10, int(self.y) - 6, 20, 12)
 
 
 # =============================================================
@@ -605,8 +839,121 @@ class Boss:
 
 
 # =============================================================
-# PARTICLE CLASS
+# HEART COLLECTABLE CLASS
 # =============================================================
+# One heart bubble spawns each wave at a random accessible spot.
+# Jerry collects it by walking over it, gaining +1 life (max 5).
+# It stays on screen until collected or the wave ends.
+
+class Heart:
+
+    SIZE = 45   # matches the scaled image size above
+
+    def __init__(self):
+        # Pick a random position that is:
+        #   - below the HUD bar (TOP_BARRIER + a small gap)
+        #   - away from all four edges so it is fully visible
+        margin = 60
+        self.x = random.randint(margin, WIDTH  - margin - self.SIZE)
+        self.y = random.randint(TOP_BARRIER + 30, HEIGHT - margin - self.SIZE)
+
+        self.width  = self.SIZE
+        self.height = self.SIZE
+        self.collected = False
+
+        # Gentle bob animation so the heart looks alive
+        self.bob_timer = 0     # counts up every frame
+        self.bob_y     = 0.0   # vertical offset applied during draw
+
+    def update(self):
+        # bob_y oscillates between -4 and +4 pixels using a sine wave
+        self.bob_timer += 0.08
+        self.bob_y = math.sin(self.bob_timer) * 4
+
+    def draw(self):
+        if not self.collected:
+            screen.blit(heart_img, (self.x, int(self.y + self.bob_y)))
+
+            if SHOW_HITBOXES:
+                pygame.draw.rect(screen, RED, self.get_rect(), 2)
+
+    def get_rect(self):
+        return pygame.Rect(self.x, self.y, self.width, self.height)
+
+
+# =============================================================
+# KEY CLASS
+# =============================================================
+# Drops from the Skeleton Captain when he dies.
+# Has a pulsing gold aura drawn around it.
+# Jerry walks over it to collect it, ending the game in victory.
+
+class Key:
+
+    WIDTH  = 120
+    HEIGHT = 60
+
+    def __init__(self, x, y):
+        # Centre the key on where the boss died
+        self.x = x - self.WIDTH  // 2
+        self.y = y - self.HEIGHT // 2
+
+        self.collected = False
+
+        # Aura pulse — this number grows every frame and feeds into
+        # math.sin() to make the glow expand and shrink smoothly.
+        self.aura_pulse = 0.0
+
+    def update(self):
+        # Advance the pulse timer each frame (~1 full cycle per second)
+        self.aura_pulse += 0.06
+
+    def draw(self):
+        if self.collected:
+            return
+
+        cx = self.x + self.WIDTH  // 2
+        cy = self.y + self.HEIGHT // 2
+
+        # --- Shining aura ---
+        # We draw several concentric circles with low alpha.
+        # Their radius pulses using sin() so they breathe in and out.
+        # sin() goes between -1 and +1; we map that to a radius range.
+        pulse_val   = math.sin(self.aura_pulse)           # -1 to +1
+        aura_radius = int(55 + pulse_val * 15)            # 40 to 70 px
+
+        # Draw 4 rings from largest (most transparent) to smallest
+        for i in range(4):
+            radius = aura_radius - i * 8
+            if radius <= 0:
+                continue
+            alpha  = 30 + i * 20                          # 30, 50, 70, 90
+            aura_surf = pygame.Surface((radius * 2, radius * 2), pygame.SRCALPHA)
+            # Gold colour: (255, 215, 0) with varying alpha
+            pygame.draw.circle(aura_surf, (255, 215, 0, alpha),
+                               (radius, radius), radius)
+            screen.blit(aura_surf, (cx - radius, cy - radius))
+
+        # --- Spinning sparkle crosses ---
+        # Four small bright crosses orbit the key at the aura edge.
+        for i in range(4):
+            angle = self.aura_pulse * 1.5 + i * (math.pi / 2)
+            sx = int(cx + math.cos(angle) * (aura_radius - 5))
+            sy = int(cy + math.sin(angle) * (aura_radius - 5))
+            pygame.draw.line(screen, (255, 255, 180), (sx - 4, sy), (sx + 4, sy), 2)
+            pygame.draw.line(screen, (255, 255, 180), (sx, sy - 4), (sx, sy + 4), 2)
+
+        # --- Key image ---
+        screen.blit(key_img, (self.x, self.y))
+
+        # Small "COLLECT KEY" prompt that pulses in brightness
+        alpha_prompt = int(160 + 80 * math.sin(self.aura_pulse * 2))
+        prompt = font_small.render("COLLECT THE KEY!", True, YELLOW)
+        prompt.set_alpha(alpha_prompt)
+        screen.blit(prompt, prompt.get_rect(center=(cx, self.y - 25)))
+
+    def get_rect(self):
+        return pygame.Rect(self.x, self.y, self.WIDTH, self.HEIGHT)
 #
 # Particles are the little sparks that appear when a pirate dies.
 # Each particle moves outward and fades away over time.
@@ -951,6 +1298,9 @@ def run_game():
     # Boss starts as None - it is created when wave 4 begins
     boss = None
 
+    # Heart collectable - one per wave, None when not on screen
+    heart = None
+
     # ---------------------------------------------------------
     # GAME VARIABLES
     # ---------------------------------------------------------
@@ -967,8 +1317,17 @@ def run_game():
     wave              = 1    # current wave number
     pirates_per_wave  = 3    # how many pirates spawn this wave
     pirates_spawned   = 0    # how many have spawned so far this wave
-    spawn_timer       = 0    # counts up; pirate spawns when it reaches spawn_delay
-    spawn_delay       = 120  # frames between each pirate spawn
+
+    # --- RANDOM SPAWNING ---
+    # Instead of a fixed delay (always 120 frames), we pick a new
+    # random delay after each spawn.  This makes enemy timing feel
+    # unpredictable rather than perfectly metronomic.
+    spawn_timer = 0
+    spawn_delay = random.randint(60, 180)   # first delay is random too
+
+    # Maximum pirates allowed on screen at once.
+    # Prevents the game from becoming unfair or laggy.
+    MAX_PIRATES = 6
 
     # Wave 4 is the boss wave.  These two flags track whether it has
     # been triggered and whether the boss fight is still ongoing.
@@ -977,6 +1336,15 @@ def run_game():
 
     # Show the wave 1 announcement
     show_wave_screen(wave)
+
+    # Spawn the first heart collectable for wave 1
+    heart = Heart()
+
+    # Start gameplay music when the game begins
+    play_music(MUSIC_GAMEPLAY)
+
+    # Footstep sound timer — tracks frames since the last footstep sound
+    footstep_timer = 0
 
     # ---------------------------------------------------------
     # GAME LOOP
@@ -1002,26 +1370,50 @@ def run_game():
                 # SPACE = sword attack
                 if event.key == pygame.K_SPACE:
                     player.start_attack()
+                    play_sound(sound_sword_swing)
 
-                # X = fire harpoon (only if cooldown has finished)
-                if event.key == pygame.K_x:
-                    if harpoon_cooldown == 0:
+            # =====================================================
+            # SHOOT — left mouse click OR X key
+            # =====================================================
+            # We fire on MOUSEBUTTONDOWN (button 1 = left click) or K_x.
+            # Both use the same firing function defined below.
 
-                        # Spawn the bullet at the tip of Jerry's gun
-                        # Jerry's body hitbox is x+15 wide 55px.
-                        # Right-facing: front edge is at x+15+55 = x+70
-                        # Left-facing:  front edge is at x+15, bullet is 30px wide
-                        if player.facing_right:
-                            harpoon_x = player.x + 70     # just past Jerry's right edge
-                        else:
-                            harpoon_x = player.x + 15 - 30  # just past Jerry's left edge
+            shoot_pressed = False
+            if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+                shoot_pressed = True
+            if event.type == pygame.KEYDOWN and event.key == pygame.K_x:
+                shoot_pressed = True
 
-                        harpoon_y = player.y + 50   # roughly gun/hand height
+            if shoot_pressed and harpoon_cooldown == 0:
+                # Get the current mouse position
+                mouse_x, mouse_y = pygame.mouse.get_pos()
 
-                        new_harpoon = Harpoon(harpoon_x, harpoon_y, player.facing_right)
-                        harpoons.append(new_harpoon)
+                # Bullet spawns at the tip of Jerry's gun (front-centre of body)
+                bullet_x = player.x + 55
+                bullet_y = player.y + 50
 
-                        harpoon_cooldown = HARPOON_COOLDOWN
+                # Work out the direction from the gun to the mouse
+                dx = mouse_x - bullet_x
+                dy = mouse_y - bullet_y
+
+                # Normalise: make the vector length = 1, then multiply by speed
+                # This ensures the bullet always travels at HARPOON_SPEED
+                # regardless of how far the cursor is from Jerry.
+                length = math.sqrt(dx * dx + dy * dy)
+                if length == 0:
+                    length = 1   # prevent division by zero if cursor is on Jerry
+
+                vx = (dx / length) * HARPOON_SPEED
+                vy = (dy / length) * HARPOON_SPEED
+
+                new_harpoon = Harpoon(bullet_x, bullet_y, vx, vy)
+                harpoons.append(new_harpoon)
+                play_sound(sound_shoot)
+
+                harpoon_cooldown = HARPOON_COOLDOWN
+
+                # Update facing direction based on where the cursor is
+                player.facing_right = (mouse_x >= player.x)
 
         # =====================================================
         # UPDATE PLAYER
@@ -1030,6 +1422,18 @@ def run_game():
         player.move()
         player.update_animation()
         player.update_attack()
+
+        # --- FOOTSTEP SOUND ---
+        # Only play a footstep while Jerry is actually moving.
+        # footstep_timer counts up each frame; when it hits FOOTSTEP_INTERVAL
+        # we play the sound and reset the timer.
+        if player.moving:
+            footstep_timer += 1
+            if footstep_timer >= FOOTSTEP_INTERVAL:
+                footstep_timer = 0
+                play_sound(sound_footstep)
+        else:
+            footstep_timer = 0   # reset when Jerry stops
 
         # Count down the harpoon cooldown each frame
         if harpoon_cooldown > 0:
@@ -1040,6 +1444,22 @@ def run_game():
             invincibility_timer -= 1
 
         # =====================================================
+        # HEART COLLECTABLE
+        # =====================================================
+        # Update the heart's bob animation each frame.
+        # Check if Jerry has walked onto it.
+
+        if heart is not None and not heart.collected:
+            heart.update()
+
+            if player.get_rect().colliderect(heart.get_rect()):
+                heart.collected = True
+                # Give Jerry +1 life, but never more than 5
+                if lives < 5:
+                    lives += 1
+                play_sound(sound_player_hit)   # reuse a sound — swap for a pickup sound later
+
+        # =====================================================
         # PIRATE SPAWNING
         # =====================================================
         # Pirates only spawn during normal waves (not the boss wave)
@@ -1047,10 +1467,38 @@ def run_game():
         if not boss_wave_active:
             spawn_timer += 1
 
-            if spawn_timer >= spawn_delay and pirates_spawned < pirates_per_wave:
+            # Only spawn if:
+            #   - enough time has passed (random delay)
+            #   - we haven't spawned all pirates for this wave yet
+            #   - there aren't too many pirates on screen already
+            if (spawn_timer >= spawn_delay
+                    and pirates_spawned < pirates_per_wave
+                    and len(pirates) < MAX_PIRATES):
+
                 spawn_timer = 0
-                spawn_y     = random.randint(TOP_BARRIER, HEIGHT - 150)
-                new_pirate  = Pirate(WIDTH, spawn_y)
+                # Pick a NEW random delay for the NEXT spawn
+                spawn_delay = random.randint(60, 180)
+
+                spawn_y = random.randint(TOP_BARRIER + 20, HEIGHT - 150)
+
+                # Randomly choose left or right side to spawn from
+                side = random.choice(["left", "right"])
+
+                if side == "left":
+                    # Spawn just off the left edge, moving right
+                    spawn_x    = -160          # starts off-screen left
+                    from_left  = True
+                else:
+                    # Spawn just off the right edge, moving left
+                    spawn_x    = WIDTH + 10    # starts off-screen right
+                    from_left  = False
+
+                # Don't spawn directly on top of Jerry
+                # If the spawn y is very close to Jerry's y, nudge it
+                if abs(spawn_y - player.y) < 60:
+                    spawn_y += 80
+
+                new_pirate = Pirate(spawn_x, spawn_y, from_left=from_left)
                 pirates.append(new_pirate)
                 pirates_spawned += 1
 
@@ -1091,6 +1539,8 @@ def run_game():
                     if harpoon in harpoons:
                         harpoons.remove(harpoon)
 
+                    play_sound(sound_bullet_hit)    # bullet connects
+                    play_sound(sound_enemy_death)   # pirate dies
                     score += 10
                     break   # one harpoon can only hit one pirate
 
@@ -1102,6 +1552,7 @@ def run_game():
             for harpoon in harpoons[:]:
                 if harpoon.get_rect().colliderect(boss.get_rect()):
                     boss.take_damage(2)   # harpoon does 2 damage to boss
+                    play_sound(sound_boss_hit)
 
                     if harpoon in harpoons:
                         harpoons.remove(harpoon)
@@ -1128,6 +1579,8 @@ def run_game():
                     particles.append(Particle(cx, cy))
 
                 pirates.remove(pirate)
+                play_sound(sound_sword_hit)     # sword connects with pirate
+                play_sound(sound_enemy_death)   # pirate dies
                 score += 10
 
         # =====================================================
@@ -1142,6 +1595,7 @@ def run_game():
             if sword_rect.colliderect(boss.get_rect()):
                 if player.attack_timer == 24:
                     boss.take_damage(1)
+                    play_sound(sound_boss_hit)
 
                     for i in range(10):
                         particles.append(Particle(
@@ -1159,6 +1613,7 @@ def run_game():
                     lives -= 1
                     invincibility_timer = 120   # 2 seconds of protection
                     pirates.remove(pirate)
+                    play_sound(sound_player_hit)   # Jerry gets hit
 
                     if lives <= 0:
                         running = False
@@ -1174,6 +1629,7 @@ def run_game():
                 if invincibility_timer == 0:
                     lives -= 2
                     invincibility_timer = 150
+                    play_sound(sound_player_hit)   # Jerry gets hit by boss
 
                     if lives <= 0:
                         running = False
@@ -1190,17 +1646,24 @@ def run_game():
                     boss.y + boss.height // 2
                 ))
 
+            play_sound(sound_enemy_death)   # boss dies
             score            += 200
             boss              = None
             boss_wave_active  = False
             boss_wave_done    = True
+
+            # Switch back to normal gameplay music after the boss dies
+            play_music(MUSIC_GAMEPLAY)
 
             # Move on to the next wave after the boss dies
             wave            += 1
             pirates_per_wave = wave + 1
             pirates_spawned  = 0
             spawn_timer      = 0
+            spawn_delay      = random.randint(60, 150)
             show_wave_screen(wave)
+            # Spawn a heart for the wave after the boss
+            heart = Heart()
 
         # =====================================================
         # REMOVE OBJECTS THAT ARE NO LONGER NEEDED
@@ -1213,10 +1676,10 @@ def run_game():
                 harpoons_to_keep.append(harpoon)
         harpoons = harpoons_to_keep
 
-        # Remove pirates that have gone far off the left edge
+        # Remove pirates that have gone far off either edge
         pirates_to_keep = []
         for pirate in pirates:
-            if pirate.x > -200:
+            if pirate.x > -200 and pirate.x < WIDTH + 200:
                 pirates_to_keep.append(pirate)
         pirates = pirates_to_keep
 
@@ -1253,6 +1716,9 @@ def run_game():
 
                     show_boss_screen()
 
+                    # Switch to boss music for the big fight
+                    play_music(MUSIC_BOSS)
+
                     # Create the boss and two minion pirates
                     boss = Boss()
                     pirates.append(Pirate(WIDTH,      random.randint(TOP_BARRIER, HEIGHT - 150)))
@@ -1261,10 +1727,14 @@ def run_game():
                 else:
                     # Normal wave transition
                     wave            = next_wave
-                    pirates_per_wave += 2   # each wave has 2 more pirates
+                    pirates_per_wave += 2
                     pirates_spawned  = 0
                     spawn_timer      = 0
+                    spawn_delay      = random.randint(60, 150)
+                    play_sound(sound_wave_start)
                     show_wave_screen(wave)
+                    # Spawn a fresh heart for the new wave
+                    heart = Heart()
 
         # =====================================================
         # SCORE TRICKLE
@@ -1280,28 +1750,31 @@ def run_game():
         # 1. Background
         screen.blit(background_img, (0, 0))
 
-        # 2. Boss (drawn behind pirates so minions appear in front)
+        # 2. Heart collectable (drawn before enemies so it sits on the floor)
+        if heart is not None and not heart.collected:
+            heart.draw()
+
+        # 3. Boss (drawn behind pirates so minions appear in front)
         if boss is not None:
             boss.draw()
 
-        # 3. Pirates
+        # 4. Pirates
         for pirate in pirates:
             pirate.draw()
 
-        # 4. Harpoons
+        # 5. Harpoons
         for harpoon in harpoons:
             harpoon.draw()
 
-        # 5. Player
-        # When invincible, Jerry flickers by skipping alternate draw calls
+        # 6. Player
         if invincibility_timer == 0 or (invincibility_timer // 6) % 2 == 0:
             player.draw()
 
-        # 6. Particles
+        # 7. Particles
         for particle in particles:
             particle.draw()
 
-        # 7. HUD (drawn last so it appears on top of everything)
+        # 8. HUD
         draw_hud(score // 10, lives, wave, harpoon_cooldown)
 
         # Show "BOSS WAVE" in red over the wave counter during wave 4
@@ -1313,8 +1786,18 @@ def run_game():
         pygame.display.flip()
 
     # The while loop ended because lives reached 0.
+    # Stop gameplay/boss music and play the game over track.
+    stop_music()
+    play_music(MUSIC_GAMEOVER)
+    play_sound(sound_game_over)
+
     # Show the game over screen and return what the player chose.
-    return show_game_over_screen(score // 10, wave)
+    result = show_game_over_screen(score // 10, wave)
+
+    # Stop the game-over music before returning so it doesn't
+    # keep playing if the player restarts.
+    stop_music()
+    return result
 
 
 # =============================================================

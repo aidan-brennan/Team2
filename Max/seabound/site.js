@@ -81,9 +81,9 @@ function handleSubmit(e) {
 
 // ── Levels data ───────────────────────────────────────────────────────────────
 const LEVELS = [
-  { num: 1, name: "The Shallows",   diff: 3, colA: "#0099cc", colB: "#004d66" },
-  { num: 2, name: "Kraken Waters",  diff: 4, colA: "#4a148c", colB: "#1a0038" },
-  { num: 3, name: "The Wreck",      diff: 5, colA: "#7f8c8d", colB: "#2c3e50" },
+  { num: 1, name: "The Shallows",   diff: 3, thumb: "sea_floor.png",  colA: "#0099cc", colB: "#004d66" },
+  { num: 2, name: "Kraken Waters",  diff: 4, thumb: "cave.png",       colA: "#4a148c", colB: "#1a0038" },
+  { num: 3, name: "The Wreck",      diff: 5, thumb: "shipwreck.png",  colA: "#7f8c8d", colB: "#2c3e50" },
 ];
 
 function buildLevels() {
@@ -94,13 +94,22 @@ function buildLevels() {
     const card = document.createElement("div");
     card.className = "level-card";
 
-    // Canvas thumbnail
-    const cvs = document.createElement("canvas");
-    cvs.className  = "level-thumb";
-    cvs.width  = 200;
-    cvs.height = 120;
-    drawLevelThumb(cvs, lv);
-    card.appendChild(cvs);
+    // Thumbnail — use image if available, otherwise draw canvas
+    if (lv.thumb) {
+      const img = document.createElement("img");
+      img.src = lv.thumb;
+      img.alt = lv.name;
+      img.className = "level-thumb";
+      img.style.objectFit = "cover";
+      card.appendChild(img);
+    } else {
+      const cvs = document.createElement("canvas");
+      cvs.className  = "level-thumb";
+      cvs.width  = 200;
+      cvs.height = 120;
+      drawLevelThumb(cvs, lv);
+      card.appendChild(cvs);
+    }
 
     // Info
     const info = document.createElement("div");
@@ -204,202 +213,6 @@ function buildArtwork() {
   });
 }
 
-function drawArtKraken(cvs) {
-  const c = cvs.getContext("2d"), w = cvs.width, h = cvs.height;
-  const g = c.createRadialGradient(w/2, h/2, 10, w/2, h/2, 130);
-  g.addColorStop(0, "#2d0060"); g.addColorStop(1, "#030010");
-  c.fillStyle = g; c.fillRect(0, 0, w, h);
-  // Tentacles
-  for (let t = 0; t < 8; t++) {
-    const ang = (t / 8) * Math.PI * 2;
-    c.strokeStyle = t % 2 === 0 ? "#4a1a7a" : "#6b2a9e";
-    c.lineWidth = 6 - t % 3;
-    c.beginPath(); c.moveTo(w/2, h*0.55);
-    c.quadraticCurveTo(
-      w/2 + Math.cos(ang) * 60, h/2 + Math.sin(ang) * 60,
-      w/2 + Math.cos(ang) * 110, h/2 + Math.sin(ang) * 100
-    );
-    c.stroke();
-  }
-  // Body
-  const bg = c.createRadialGradient(w/2, h*0.4, 5, w/2, h*0.4, 55);
-  bg.addColorStop(0, "#7b2fff"); bg.addColorStop(1, "#1a0040");
-  c.fillStyle = bg;
-  c.beginPath(); c.ellipse(w/2, h*0.38, 50, 42, 0, 0, Math.PI*2); c.fill();
-  // Eyes
-  c.fillStyle = "#ff2222";
-  c.beginPath(); c.arc(w/2 - 16, h*0.35, 7, 0, Math.PI*2); c.fill();
-  c.beginPath(); c.arc(w/2 + 16, h*0.35, 7, 0, Math.PI*2); c.fill();
-  c.fillStyle = "#000";
-  c.beginPath(); c.arc(w/2 - 15, h*0.35, 3, 0, Math.PI*2); c.fill();
-  c.beginPath(); c.arc(w/2 + 17, h*0.35, 3, 0, Math.PI*2); c.fill();
-}
-
-function drawArtShark(cvs) {
-  const c = cvs.getContext("2d"), w = cvs.width, h = cvs.height;
-  const g = c.createLinearGradient(0, 0, 0, h);
-  g.addColorStop(0, "#0a2235"); g.addColorStop(1, "#061520");
-  c.fillStyle = g; c.fillRect(0, 0, w, h);
-  // Light rays
-  for (let r = 0; r < 4; r++) {
-    c.fillStyle = "rgba(100,200,255,0.04)";
-    c.beginPath(); c.moveTo(w*0.4 + r*20, 0);
-    c.lineTo(w*0.1 + r*30, h); c.lineTo(w*0.25 + r*30, h);
-    c.lineTo(w*0.55 + r*20, 0); c.fill();
-  }
-  // Body
-  c.fillStyle = "#4a6070";
-  c.beginPath(); c.ellipse(w/2, h/2, 95, 26, 0, 0, Math.PI*2); c.fill();
-  c.fillStyle = "#c0cfd8";
-  c.beginPath(); c.ellipse(w/2+10, h/2+8, 60, 14, 0, 0, Math.PI*2); c.fill();
-  // Dorsal fin
-  c.fillStyle = "#3a5060";
-  c.beginPath(); c.moveTo(w/2-10, h/2-26); c.lineTo(w/2+5, h/2-52);
-  c.lineTo(w/2+22, h/2-26); c.closePath(); c.fill();
-  // Tail
-  c.beginPath(); c.moveTo(w/2-90, h/2);
-  c.lineTo(w/2-110, h/2-20); c.lineTo(w/2-85, h/2);
-  c.lineTo(w/2-110, h/2+20); c.closePath();
-  c.fillStyle = "#3a5060"; c.fill();
-  // Eye
-  c.fillStyle = "#ff2020";
-  c.beginPath(); c.arc(w/2+55, h/2-6, 5, 0, Math.PI*2); c.fill();
-  c.fillStyle="#000"; c.beginPath(); c.arc(w/2+56, h/2-6, 2, 0, Math.PI*2); c.fill();
-}
-
-function drawArtDiver(cvs) {
-  const c = cvs.getContext("2d"), w = cvs.width, h = cvs.height;
-  const g = c.createLinearGradient(0, 0, 0, h);
-  g.addColorStop(0, "#00334e"); g.addColorStop(1, "#001020");
-  c.fillStyle = g; c.fillRect(0, 0, w, h);
-  // Bubbles
-  for (let b = 0; b < 12; b++) {
-    c.strokeStyle = "rgba(160,220,255,0.4)"; c.lineWidth = 1;
-    c.beginPath(); c.arc(w/2 - 20 + b*5, h*0.2 + b*8, 3+b%4, 0, Math.PI*2); c.stroke();
-  }
-  // Tank
-  c.fillStyle = "#aaa";
-  c.beginPath(); c.roundRect(w/2+18, h*0.3, 14, 60, 4); c.fill();
-  // Body
-  c.fillStyle = "#1a6fa8";
-  c.beginPath(); c.roundRect(w/2-22, h*0.32, 44, 62, 10); c.fill();
-  c.fillStyle = "#0d4f7a";
-  c.fillRect(w/2-2, h*0.35, 4, 56);
-  // Head
-  c.fillStyle = "#1a6fa8";
-  c.beginPath(); c.arc(w/2, h*0.26, 22, 0, Math.PI*2); c.fill();
-  // Mask
-  c.fillStyle = "#88ddff";
-  c.beginPath(); c.ellipse(w/2-2, h*0.25, 16, 12, 0, 0, Math.PI*2); c.fill();
-  c.strokeStyle = "#0055aa"; c.lineWidth = 2;
-  c.beginPath(); c.ellipse(w/2-2, h*0.25, 16, 12, 0, 0, Math.PI*2); c.stroke();
-  // Eye reflection
-  c.fillStyle = "#fff";
-  c.beginPath(); c.arc(w/2-4, h*0.24, 4, 0, Math.PI*2); c.fill();
-  c.fillStyle = "#222"; c.beginPath(); c.arc(w/2-3, h*0.24, 2, 0, Math.PI*2); c.fill();
-  // Fins
-  c.fillStyle = "#e8a020";
-  c.beginPath(); c.ellipse(w/2-16, h*0.78, 20, 8, 0.4, 0, Math.PI*2); c.fill();
-  c.beginPath(); c.ellipse(w/2+14, h*0.78, 20, 8, -0.4, 0, Math.PI*2); c.fill();
-  // Harpoon gun
-  c.fillStyle = "#334"; c.beginPath(); c.roundRect(w/2+22, h*0.44, 34, 8, 3); c.fill();
-  c.fillStyle = "#ff6600";
-  c.beginPath(); c.moveTo(w/2+56, h*0.48); c.lineTo(w/2+50, h*0.44);
-  c.lineTo(w/2+50, h*0.52); c.closePath(); c.fill();
-}
-
-function drawArtCoral(cvs) {
-  const c = cvs.getContext("2d"), w = cvs.width, h = cvs.height;
-  c.fillStyle = "#061828"; c.fillRect(0, 0, w, h);
-  // Sand
-  c.fillStyle = "#8a6a3a"; c.fillRect(0, h-22, w, 22);
-  c.fillStyle = "#a07a48"; c.fillRect(0, h-24, w, 4);
-  // Corals
-  const corals = [
-    {x:30, col:"#e74c3c"},{x:75,col:"#ff7043"},{x:130,col:"#9b59b6"},
-    {x:175,col:"#e74c3c"},{x:210,col:"#ff9800"},{x:w-40,col:"#e91e63"},
-  ];
-  corals.forEach(cr => {
-    c.strokeStyle = cr.col; c.lineWidth = 5; c.lineCap = "round";
-    c.beginPath(); c.moveTo(cr.x, h-22); c.lineTo(cr.x, h-80); c.stroke();
-    c.lineWidth = 3;
-    for (let b = 0; b < 4; b++) {
-      const bDir = b%2===0?1:-1, by = h-40-b*12;
-      c.beginPath(); c.moveTo(cr.x, by); c.lineTo(cr.x+bDir*22, by-14); c.stroke();
-    }
-  });
-  // Fish silhouettes
-  for (let f = 0; f < 5; f++) {
-    c.fillStyle = `rgba(${100+f*20},${180+f*10},${220},0.6)`;
-    const fx = 20+f*42, fy = h*0.3+f*15;
-    c.beginPath(); c.ellipse(fx,fy,10,5,0,0,Math.PI*2); c.fill();
-    c.beginPath(); c.moveTo(fx-10,fy); c.lineTo(fx-17,fy-5); c.lineTo(fx-17,fy+5); c.fill();
-  }
-}
-
-function drawArtWreck(cvs) {
-  const c = cvs.getContext("2d"), w = cvs.width, h = cvs.height;
-  const g = c.createLinearGradient(0,0,0,h);
-  g.addColorStop(0,"#0a1828"); g.addColorStop(1,"#050c14");
-  c.fillStyle=g; c.fillRect(0,0,w,h);
-  // Hull of wreck
-  c.fillStyle = "#3a3a3a";
-  c.beginPath(); c.moveTo(20,h*0.75); c.lineTo(w-20,h*0.75);
-  c.lineTo(w-40,h*0.95); c.lineTo(40,h*0.95); c.closePath(); c.fill();
-  c.fillStyle="#2a2a2a"; c.fillRect(20,h*0.75,w-40,4);
-  // Porthole windows
-  for (let pw=0;pw<4;pw++) {
-    c.strokeStyle="#555"; c.lineWidth=3;
-    c.beginPath(); c.arc(55+pw*50, h*0.83, 9, 0, Math.PI*2); c.stroke();
-    c.fillStyle="rgba(0,150,200,0.15)";
-    c.beginPath(); c.arc(55+pw*50, h*0.83, 7, 0, Math.PI*2); c.fill();
-  }
-  // Mast
-  c.fillStyle="#2a2a2a"; c.fillRect(w*0.6-2,h*0.3,4,h*0.45);
-  c.fillRect(w*0.6-28,h*0.45,56,3);
-  // Kelp growing on wreck
-  for (let k=0;k<5;k++) {
-    c.strokeStyle=k%2===0?"#1a5c2a":"#2e7d45"; c.lineWidth=3;
-    c.beginPath(); c.moveTo(30+k*40,h*0.75);
-    c.quadraticCurveTo(25+k*40,h*0.55,35+k*38,h*0.4); c.stroke();
-  }
-  // Particles / particles
-  for (let p=0;p<20;p++) {
-    c.fillStyle=`rgba(150,210,255,${0.1+Math.random()*0.2})`;
-    c.fillRect(Math.random()*w, Math.random()*h, 1, 1);
-  }
-}
-
-function drawArtJelly(cvs) {
-  const c = cvs.getContext("2d"), w = cvs.width, h = cvs.height;
-  const g = c.createRadialGradient(w/2,h/2,20,w/2,h/2,130);
-  g.addColorStop(0,"#1a0040"); g.addColorStop(1,"#000818");
-  c.fillStyle=g; c.fillRect(0,0,w,h);
-  // Glow
-  const glow = c.createRadialGradient(w/2,h*0.38,5,w/2,h*0.38,70);
-  glow.addColorStop(0,"rgba(180,0,255,0.3)"); glow.addColorStop(1,"rgba(0,0,0,0)");
-  c.fillStyle=glow; c.fillRect(0,0,w,h);
-  // Bell
-  const jg = c.createRadialGradient(w/2,h*0.3,5,w/2,h*0.38,55);
-  jg.addColorStop(0,"rgba(220,100,255,0.9)"); jg.addColorStop(1,"rgba(100,0,180,0.6)");
-  c.fillStyle=jg;
-  c.beginPath(); c.ellipse(w/2,h*0.38,48,38,0,Math.PI,Math.PI*2); c.fill();
-  // Inner pattern
-  c.strokeStyle="rgba(255,150,255,0.3)"; c.lineWidth=1;
-  for(let r=10;r<45;r+=10){
-    c.beginPath(); c.arc(w/2,h*0.38,r,Math.PI,Math.PI*2); c.stroke();
-  }
-  // Tentacles
-  for(let t=0;t<10;t++){
-    const tx = w/2 - 36 + t*8;
-    c.strokeStyle = t%2===0 ? "rgba(200,80,255,0.7)" : "rgba(255,150,255,0.5)";
-    c.lineWidth = 1.5;
-    c.beginPath(); c.moveTo(tx, h*0.56);
-    c.bezierCurveTo(tx-10+t*2, h*0.65, tx+5, h*0.78, tx-8+t*3, h*0.95);
-    c.stroke();
-  }
-}
-
 // ── About diver image ─────────────────────────────────────────────────────────
 function drawAboutCanvas() {
   const cvs = document.getElementById("aboutCanvas");
@@ -412,9 +225,73 @@ function drawAboutCanvas() {
   cvs.replaceWith(img);
 }
 
+// ── Enemies data ──────────────────────────────────────────────────────────────
+const ENEMIES = [
+  { label: "Shark",              img: "shark1.png"           },
+  { label: "Jellyfish",          img: "pixil-frame-0.png"    },
+  { label: "Shark Father",       img: "sharkboss.png"        },
+  { label: "Kraken Tentacle",    img: "Tentacle.png"         },
+  { label: "Skeleton (Melee)",   img: "pirate.png"           },
+  { label: "Skeleton Captain",   img: "skeleton_captain.png" },
+];
+
+function buildEnemies() {
+  const grid = document.getElementById("enemiesGrid");
+  if (!grid) return;
+  ENEMIES.forEach(en => {
+    const card = document.createElement("div");
+    card.className = "enemy-card";
+
+    const img = document.createElement("img");
+    img.src = en.img;
+    img.alt = en.label;
+    img.className = "enemy-img";
+    img.loading = "lazy";
+    card.appendChild(img);
+
+    const label = document.createElement("div");
+    label.className = "enemy-label";
+    label.textContent = en.label;
+    card.appendChild(label);
+
+    grid.appendChild(card);
+  });
+}
+
+// ── Collectables data ─────────────────────────────────────────────────────────
+const COLLECTABLES = [
+  { label: "Heart",   img: "heart.png"    },
+  { label: "O2 Tank", img: "o2 tank.png"  },
+];
+
+function buildCollectables() {
+  const grid = document.getElementById("collectablesGrid");
+  if (!grid) return;
+  COLLECTABLES.forEach(item => {
+    const card = document.createElement("div");
+    card.className = "enemy-card";
+
+    const img = document.createElement("img");
+    img.src = item.img;
+    img.alt = item.label;
+    img.className = "enemy-img";
+    img.loading = "lazy";
+    card.appendChild(img);
+
+    const label = document.createElement("div");
+    label.className = "enemy-label";
+    label.textContent = item.label;
+    card.appendChild(label);
+
+    grid.appendChild(card);
+  });
+}
+
 // ── Init ──────────────────────────────────────────────────────────────────────
 buildLevels();
 buildArtwork();
+buildEnemies();
+buildCollectables();
 drawAboutCanvas();
 
 // ── Hero hotspot tooltips ─────────────────────────────────────────────────────

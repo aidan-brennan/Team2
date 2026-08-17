@@ -37,14 +37,15 @@ def _load_sound(path, volume=100.0):
 
 # ── placeholder paths — swap these for your own files ──────────────────────
 SFX_HARPOON_SHOOT  = _load_sound('sounds/harpoongun.ogg',       volume=0.8)
-SFX_HEALTH_PICKUP  = _load_sound('sounds/heart bubble.ogg',     volume=0.9)
-SFX_JELLY_ATTACK   = _load_sound('sounds/jellyfish attack.ogg', volume=0.7)
+SFX_HEALTH_PICKUP  = _load_sound('sounds/heart bubble.ogg',     volume=0.8)
+SFX_JELLY_ATTACK   = _load_sound('sounds/jellyfish attack.ogg', volume=0.8)
 SFX_JELLY_DIE      = _load_sound('sounds/jellyfish die.ogg',    volume=0.8)
 SFX_PLAYER_DAMAGE  = _load_sound('sounds/jerry damage.ogg',     volume=1.0)
 SFX_PLAYER_DIE     = _load_sound('sounds/jerrydie.ogg',         volume=1.0)
 SFX_SHARK_ATTACK   = _load_sound('sounds/sharkbiteAUDIO.ogg',   volume=0.9)
 SFX_SHARK_DIE      = _load_sound('sounds/shark die.ogg',        volume=0.8)
 SFX_BOSS_DIE       = _load_sound('sounds/boss die.ogg',         volume=1.0)
+SFX_OXYGEN_PICKUP  = _load_sound('sounds/oxygen tank.ogg',      volume=0.7)
 # ── end of sound placeholders ───────────────────────────────────────────────
 
 # ---------------------------------------------------------------------------
@@ -1345,7 +1346,7 @@ class OxygenTankPickup(pygame.sprite.Sprite):
     Collectible oxygen tank.  Reuses OxygenTank for the bob animation;
     lives in world-space as a normal Sprite so CameraGroup can draw it.
     """
-    REFILL = 30          # oxygen points restored on pickup
+    REFILL = 60          # oxygen points restored on pickup
     LIFETIME = 18.0      # seconds before it despawns
 
     def __init__(self, pos, groups):
@@ -1370,6 +1371,7 @@ class OxygenTankPickup(pygame.sprite.Sprite):
         self.bob_offset = (math.sin(now * OxygenTank.BOB_SPEED +
                                     self._tank.time_offset) * OxygenTank.BOB_AMPLITUDE)
         self.rect.center = self.pos
+        
 
 
 # ---------------------------------------------------------------------------

@@ -75,6 +75,9 @@ class OxygenSystem:
         raw_image = pygame.image.load("images/o2 tank.png").convert_alpha()
         self.image = pygame.transform.smoothscale(raw_image, tank_size)
 
+        self._collect_sound = pygame.mixer.Sound("sounds/oxygen tank.ogg")
+        self._collect_sound.set_volume(0.7)
+
         self.tanks = []
         self.next_spawn_time = 0
         self._queue_next_spawn(immediate=True)
@@ -111,8 +114,11 @@ class OxygenSystem:
     def add_oxygen(self, amount):
         self.oxygen = min(self.max_oxygen, self.oxygen + amount)
 
+    def set_sfx_volume(self, volume):
+        """Called by level2 whenever the SFX slider changes."""
+        self._collect_sound.set_volume(volume)
+
     def update(self, dt, player_rect, scroll_speed=3):
-      
         # deplete oxygen over time
         self.oxygen -= self.drain_per_second * dt
         self.oxygen = max(0, self.oxygen)
@@ -123,7 +129,7 @@ class OxygenSystem:
             self._spawn_tank()
             self._queue_next_spawn()
 
-        # scroll tanks left (same speed as tentacles)
+        # scroll tanks left
         for tank in self.tanks:
             tank.update(scroll_speed)
 
@@ -131,6 +137,7 @@ class OxygenSystem:
         for tank in self.tanks:
             if tank.check_collect(player_rect):
                 self.add_oxygen(tank.refill_amount)
+                self._collect_sound.play()
 
         # remove tanks that were collected or have scrolled off screen
         self.tanks = [t for t in self.tanks if not t.collected and not t.offscreen()]

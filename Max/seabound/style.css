@@ -399,11 +399,15 @@ p:last-child { margin-bottom: 0; }
 }
 .card-icon { font-size: 2rem; margin-bottom: 1rem; }
 .card-icon-img {
-  width: 2.5rem;
-  height: 2.5rem;
+  width: 5rem;
+  height: 5rem;
   object-fit: contain;
   image-rendering: pixelated;
   display: block;
+}
+.card-icon-img--large {
+  width: 5rem;
+  height: 5rem;
 }
 .card h3 {
   font-family: var(--pixel-font);
@@ -454,6 +458,29 @@ p:last-child { margin-bottom: 0; }
   align-items: start;
 }
 .about-text h3 { color: var(--aqua); margin-bottom: .75rem; }
+.team-list {
+  display: flex;
+  flex-direction: column;
+  gap: .5rem;
+  margin-top: 1rem;
+}
+.team-member {
+  display: flex;
+  align-items: baseline;
+  gap: .6rem;
+}
+.team-name {
+  font-family: var(--pixel-font);
+  font-size: .45rem;
+  color: var(--gold);
+  letter-spacing: .07em;
+  white-space: nowrap;
+}
+.team-role {
+  font-family: var(--body-font);
+  font-size: .9rem;
+  color: var(--muted);
+}
 .pixel-box {
   border: 3px solid var(--border);
   border-radius: 6px;
@@ -522,6 +549,47 @@ p:last-child { margin-bottom: 0; }
 .diff-pip.on  { background: var(--coral); }
 .diff-pip.off { background: var(--border); }
 
+/* ── Enemy grid ──────────────────────────────────────────────────────────── */
+.enemies-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 1.25rem;
+  margin-top: 2rem;
+}
+.enemy-card {
+  background: var(--card-bg);
+  border: 2px solid var(--border);
+  border-radius: 6px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 1.25rem .75rem .75rem;
+  transition: border-color .2s, transform .2s;
+  cursor: default;
+}
+.enemy-card:hover {
+  border-color: var(--coral);
+  transform: translateY(-3px);
+}
+.enemy-img {
+  max-height: 100px;
+  width: auto;
+  max-width: 100%;
+  object-fit: contain;
+  image-rendering: pixelated;
+  display: block;
+  margin-bottom: .75rem;
+}
+.enemy-label {
+  font-family: var(--pixel-font);
+  font-size: .38rem;
+  color: var(--aqua);
+  letter-spacing: .07em;
+  text-align: center;
+  line-height: 1.6;
+}
+
 /* ── Artwork grid ────────────────────────────────────────────────────────── */
 .art-grid {
   display: grid;
@@ -554,6 +622,66 @@ p:last-child { margin-bottom: 0; }
   font-size: .4rem;
   color: var(--muted);
   letter-spacing: .08em;
+}
+
+/* ── Merch ───────────────────────────────────────────────────────────────── */
+.merch-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 2rem;
+  margin-top: 2rem;
+}
+.merch-card {
+  background: var(--card-bg);
+  border: 2px solid var(--border);
+  border-radius: 6px;
+  overflow: hidden;
+  transition: border-color .25s, transform .2s, box-shadow .25s;
+}
+.merch-card:hover {
+  border-color: var(--gold);
+  transform: translateY(-4px);
+  box-shadow: 0 8px 32px rgba(255,215,0,.15);
+}
+.merch-img-wrap {
+  background: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  aspect-ratio: 1 / 1;
+}
+.merch-img {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+  display: block;
+}
+.merch-info {
+  padding: 1.25rem 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: .6rem;
+}
+.merch-name {
+  font-family: var(--pixel-font);
+  font-size: .48rem;
+  color: var(--white);
+  letter-spacing: .07em;
+  line-height: 1.6;
+}
+.merch-price {
+  font-family: var(--pixel-font);
+  font-size: .65rem;
+  color: var(--gold);
+  letter-spacing: .08em;
+}
+.merch-btn {
+  margin-top: .4rem;
+  width: 100%;
+  justify-content: center;
+  border: none;
+  cursor: pointer;
 }
 
 /* ── Social ──────────────────────────────────────────────────────────────── */

@@ -28,8 +28,8 @@
       <nav class="nav-links" id="navLinks">
         <a href="#home"    class="nav-link active" data-page="home">Home</a>
         <a href="#about"   class="nav-link" data-page="about">About</a>
-        <a href="#levels"  class="nav-link" data-page="levels">Levels</a>
-        <a href="#artwork" class="nav-link" data-page="artwork">Artwork</a>
+        <a href="#assets"  class="nav-link" data-page="assets">Assets</a>
+        <a href="#merch"   class="nav-link" data-page="merch">Merch</a>
         <a href="#social"  class="nav-link" data-page="social">Social</a>
         <a href="#contact" class="nav-link" data-page="contact">Contact</a>
         <a href="#play" class="nav-cta" data-page="play">&#9654; Play Now</a>
@@ -144,7 +144,7 @@
             <p>Battle sharks, jellyfish, the Kraken and an undead pirate crew across 3 of our hand-crafted levels.</p>
           </div>
           <div class="card">
-            <div class="card-icon"><img src="harpoon gun.png" alt="Harpoon Gun" class="card-icon-img" /></div>
+            <div class="card-icon"><img src="harpoon gun.png" alt="Harpoon Gun" class="card-icon-img card-icon-img--large" /></div>
             <h3>Harpoon Combat</h3>
             <p>Aim your harpoon gun with precision. One shot can mean the difference between life and death.</p>
           </div>
@@ -180,9 +180,14 @@
           <div class="about-text">
             <h3 class="pixel small">THE GAME</h3>
             <p>Sea Bound is a pixel-art action game where you play as a deep-sea diver dropped from a research vessel into some of the most dangerous waters on Earth. Armed only with a harpoon gun and your wits, you must retrieve ancient treasure and fight you way to escape before your oxygen runs out.</p>
-            <p>Built with a love for retro aesthetics and modern game-feel, Sea Bound blends chunky pixel art with fluid controls and a pulse-pounding original soundtrack.</p>
             <h3 class="pixel small" style="margin-top:2rem;">THE TEAM</h3>
-            <p>Sea Bound is an indie project developed by a small team of pixel artists and coders whose aim it is to deliver a game that is both challenging and fun.</p>
+            <p>Sea Bound is an indie project developed by a small team of pixel artists and coders.</p>
+            <div class="team-list">
+              <div class="team-member"><span class="team-name">Matthew</span><span class="team-role">Scrum Master, Game Developer</span></div>
+              <div class="team-member"><span class="team-name">Aidan</span><span class="team-role">Game Developer, Sound Effects</span></div>
+              <div class="team-member"><span class="team-name">Fionn</span><span class="team-role">Game Developer, Pixel Art</span></div>
+              <div class="team-member"><span class="team-name">Max</span><span class="team-role">Website Developer, Media Manager</span></div>
+            </div>
           </div>
           <div class="about-panel">
             <div class="pixel-box">
@@ -201,21 +206,51 @@
       </div>
     </section>
 
-    <!-- LEVELS -------------------------------------------------------------- -->
-    <section id="levels" class="page">
+    <!-- ASSETS -------------------------------------------------------------- -->
+    <section id="assets" class="page">
       <div class="section-wrap">
         <h2 class="section-title pixel">LEVELS</h2>
         <p class="section-sub">3 depths. Each more challenging than the last.</p>
         <div class="levels-grid" id="levelsGrid"></div>
+
+        <h2 class="section-title pixel" style="margin-top:4rem;">ENEMIES</h2>
+        <p class="section-sub">Various enemies</p>
+        <div class="enemies-grid" id="enemiesGrid"></div>
+
+        <h2 class="section-title pixel" style="margin-top:4rem;">COLLECTABLES</h2>
+        <p class="section-sub">Pick these up to stay alive.</p>
+        <div class="enemies-grid" id="collectablesGrid"></div>
+
       </div>
     </section>
 
-    <!-- ARTWORK ------------------------------------------------------------- -->
-    <section id="artwork" class="page">
+    <!-- MERCH --------------------------------------------------------------- -->
+    <section id="merch" class="page">
       <div class="section-wrap">
-        <h2 class="section-title pixel">ARTWORK</h2>
-        <p class="section-sub">Pixel art from the depths of Sea Bound.</p>
-        <div class="art-grid" id="artGrid"></div>
+        <h2 class="section-title pixel">MERCH</h2>
+        <p class="section-sub">Official Sea Bound gear. Limited stock.</p>
+        <div class="merch-grid">
+          <div class="merch-card">
+            <div class="merch-img-wrap">
+              <img src="wetsuit.png" alt="Jerry's Wetsuit (Used)" class="merch-img" />
+            </div>
+            <div class="merch-info">
+              <div class="merch-name">Jerry's Wetsuit (Used)</div>
+              <div class="merch-price">€150</div>
+              <button class="btn btn-primary merch-btn">Add to Cart</button>
+            </div>
+          </div>
+          <div class="merch-card">
+            <div class="merch-img-wrap">
+              <img src="sharktooth.png" alt="Shark Tooth Necklace" class="merch-img" />
+            </div>
+            <div class="merch-info">
+              <div class="merch-name">Shark Tooth Necklace</div>
+              <div class="merch-price">€20</div>
+              <button class="btn btn-primary merch-btn">Add to Cart</button>
+            </div>
+          </div>
+        </div>
       </div>
     </section>
 
@@ -231,7 +266,7 @@
             <p>@SeaBoundGame</p>
             <span class="social-follow">Follow</span>
           </a>
-          <a href="#" class="social-card" style="--accent:#e1306c">
+          <a href="https://www.instagram.com/seabound26" target="_blank" class="social-card" style="--accent:#e1306c">
             <div class="social-icon">&#128247;</div>
             <h3>Instagram</h3>
             <p>@seabound.game</p>
@@ -273,7 +308,6 @@
         <div class="play-header">
           <div class="play-title">
             <span class="pixel">SEA &#9875; BOUND</span>
-            <span class="play-sub">Scuba Fighter</span>
           </div>
           <button class="btn btn-outline play-back" data-page="home">&#8592; Back</button>
         </div>
@@ -281,15 +315,6 @@
         <!-- Canvas area -->
         <div class="game-frame">
           <canvas id="gameCanvas"></canvas>
-        </div>
-
-        <!-- Controls reference -->
-        <div class="play-controls">
-          <div class="ctrl-item"><kbd>W A S D</kbd><span>or</span><kbd>&#8593; &#8592; &#8595; &#8594;</kbd><span>Move diver</span></div>
-          <div class="ctrl-sep"></div>
-          <div class="ctrl-item"><kbd>Click</kbd><span>or</span><kbd>Space</kbd><span>Fire harpoon</span></div>
-          <div class="ctrl-sep"></div>
-          <div class="ctrl-item"><span class="ctrl-tip">&#9888; Arrow keys scroll the page — click the game canvas first to focus it</span></div>
         </div>
 
       </div>

@@ -81,9 +81,9 @@ function handleSubmit(e) {
 
 // ── Levels data ───────────────────────────────────────────────────────────────
 const LEVELS = [
-  { num: 1, name: "The Shallows",   diff: 3, thumb: "sea_floor.png",  colA: "#0099cc", colB: "#004d66" },
-  { num: 2, name: "Kraken Waters",  diff: 4, thumb: "cave.png",       colA: "#4a148c", colB: "#1a0038" },
-  { num: 3, name: "The Wreck",      diff: 5, thumb: "shipwreck.png",  colA: "#7f8c8d", colB: "#2c3e50" },
+  { num: 1, name: "The Shallows",  diff: 3, thumb: "sea_floor.png"  },
+  { num: 2, name: "Kraken Waters", diff: 4, thumb: "cave.png"       },
+  { num: 3, name: "The Wreck",     diff: 5, thumb: "shipwreck.png"  },
 ];
 
 function buildLevels() {
@@ -93,23 +93,6 @@ function buildLevels() {
   LEVELS.forEach(lv => {
     const card = document.createElement("div");
     card.className = "level-card";
-
-    // Thumbnail — use image if available, otherwise draw canvas
-    if (lv.thumb) {
-      const img = document.createElement("img");
-      img.src = lv.thumb;
-      img.alt = lv.name;
-      img.className = "level-thumb";
-      img.style.objectFit = "cover";
-      card.appendChild(img);
-    } else {
-      const cvs = document.createElement("canvas");
-      cvs.className  = "level-thumb";
-      cvs.width  = 200;
-      cvs.height = 120;
-      drawLevelThumb(cvs, lv);
-      card.appendChild(cvs);
-    }
 
     // Info
     const info = document.createElement("div");
@@ -125,61 +108,13 @@ function buildLevels() {
   });
 }
 
-function drawLevelThumb(cvs, lv) {
-  const c   = cvs.getContext("2d");
-  const w   = cvs.width, h = cvs.height;
-  const sy  = Math.floor(h * 0.45);
-
-  // Sky gradient
-  const sg = c.createLinearGradient(0, 0, 0, sy);
-  sg.addColorStop(0, "#0a1220");
-  sg.addColorStop(1, lv.colB);
-  c.fillStyle = sg;
-  c.fillRect(0, 0, w, sy);
-
-  // Water gradient
-  const wg = c.createLinearGradient(0, sy, 0, h);
-  wg.addColorStop(0, lv.colA);
-  wg.addColorStop(1, lv.colB);
-  c.fillStyle = wg;
-  c.fillRect(0, sy, w, h - sy);
-
-  // Horizon line
-  c.fillStyle = "rgba(255,255,255,0.15)";
-  c.fillRect(0, sy - 1, w, 2);
-
-  // Simple pixel star dots in sky
-  for (let s = 0; s < 12; s++) {
-    const sx2 = (lv.num * 31 + s * 17) % w;
-    const sy2 = (lv.num * 13 + s * 7)  % sy;
-    c.fillStyle = "rgba(255,255,255,0.7)";
-    c.fillRect(sx2, sy2, 1, 1);
-  }
-
-  // Level number watermark
-  c.fillStyle = "rgba(255,255,255,0.07)";
-  c.font = "bold 52px 'Press Start 2P', monospace";
-  c.textAlign = "center";
-  c.fillText(lv.num, w / 2, h * 0.75);
-
-  // Lock icon for locked levels
-  if (lv.num > 3) {
-    c.fillStyle = "rgba(0,0,0,0.5)";
-    c.fillRect(0, 0, w, h);
-    c.fillStyle = "rgba(255,255,255,0.25)";
-    c.font = "18px sans-serif";
-    c.textAlign = "center";
-    c.fillText("🔒", w / 2, h / 2 + 6);
-  }
-}
-
 // ── Artwork data ──────────────────────────────────────────────────────────────
 const ARTWORKS = [
-  { label: "THE KRAKEN",  img: "Tentacle.png"},
-  { label: "SHARK", img: "shark3.png"},
-  { label: "JERRY", img: "jerryharpoon-r.png"},
-  { label: "SEA FLOOR", img: "../../Images/sea_floor.png"},
-  { label: "THE WRECK", img: "../../Images/shipwreck.png"},
+  { label: "THE KRAKEN",  img: "Tentacle.png"        },
+  { label: "SHARK",       img: "shark3.png"           },
+  { label: "JERRY",       img: "jerryharpoon-r.png"  },
+  { label: "SEA FLOOR",   img: "sea_floor.png"        },
+  { label: "THE WRECK",   img: "shipwreck.png"        },
 ];
 
 function buildArtwork() {
@@ -189,21 +124,12 @@ function buildArtwork() {
     const card = document.createElement("div");
     card.className = "art-card";
 
-    if (art.img) {
-      // Real image — use an <img> tag so the full image is shown
-      const imgEl = document.createElement("img");
-      imgEl.src = art.img;
-      imgEl.alt = art.label;
-      imgEl.className = "art-img";
-      imgEl.loading = "lazy";
-      card.appendChild(imgEl);
-    } else {
-      // Canvas-drawn artwork
-      const cvs = document.createElement("canvas");
-      cvs.width = 240; cvs.height = 200;
-      art.draw(cvs);
-      card.appendChild(cvs);
-    }
+    const imgEl = document.createElement("img");
+    imgEl.src = art.img;
+    imgEl.alt = art.label;
+    imgEl.className = "art-img";
+    imgEl.loading = "lazy";
+    card.appendChild(imgEl);
 
     const label = document.createElement("div");
     label.className = "art-label";

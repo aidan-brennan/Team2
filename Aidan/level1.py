@@ -18,6 +18,40 @@ small_font = pygame.font.SysFont("arial", 22)
 big_font = pygame.font.SysFont("arial", 64, bold=True)
 title_font = pygame.font.SysFont("arial", 40, bold=True)
 
+pygame.mixer.music.load("sounds/soundlevel2.mp3")
+pygame.mixer.music.set_volume(0.5)
+pygame.mixer.music.play(-1)
+
+music_volume = 0.5
+
+# Sharkfather theme — loaded separately, played only during the boss fight
+def start_boss_music():
+    """Start the Sharkfather theme once at full volume, ducking SFX channels."""
+    try:
+        pygame.mixer.music.stop()
+        pygame.mixer.music.load("sounds/sharkfathersong.ogg")
+        pygame.mixer.music.set_volume(100.0)
+        pygame.mixer.music.play(0, fade_ms=800)   # 0 = play once, no loop
+        # Duck all SFX channels so music dominates
+        for i in range(pygame.mixer.get_num_channels()):
+            pygame.mixer.Channel(i).set_volume(0.15)
+    except pygame.error as e:
+        print(f"[music] couldn't play boss music: {e}")
+
+def stop_boss_music(resume_normal=True):
+    """Stop boss music, restore SFX volumes, optionally resume level track."""
+    pygame.mixer.music.fadeout(1200)
+    # Restore SFX channel volumes to full
+    for i in range(pygame.mixer.get_num_channels()):
+        pygame.mixer.Channel(i).set_volume(1.0)
+    if resume_normal:
+        try:
+            pygame.mixer.music.load("sounds/soundlevel2.mp3")
+            pygame.mixer.music.set_volume(music_volume)
+            pygame.mixer.music.play(-1, fade_ms=1500)
+        except pygame.error:
+            pass
+
 # ---------------------------------------------------------------------------
 # Sound effects
 # ---------------------------------------------------------------------------
@@ -630,9 +664,9 @@ WAVE_DATA = [
     # wave 2
     {"count": 5, "jellies": 0, "interval": 1800, "speed_mult": 1.0,  "health_bonus": 0, "boss": False},
     # wave 3 – first jellyfish appear
-    {"count": 5, "jellies": 2, "interval": 1500, "speed_mult": 1.2,  "health_bonus": 1, "boss": False},
+    {"count": 5, "jellies": 2, "interval": 1500, "speed_mult": 1.2,  "health_bonus": 0, "boss": False},
     # wave 4
-    {"count": 6, "jellies": 4, "interval": 1300, "speed_mult": 1.4,  "health_bonus": 1, "boss": False},
+    {"count": 6, "jellies": 4, "interval": 1300, "speed_mult": 1.2,  "health_bonus": 0, "boss": False},
     # wave 5 – boss + jellies
     {"count": 3, "jellies": 4, "interval": 1200, "speed_mult": 1.5,  "health_bonus": 1, "boss": True},
 ]
@@ -1215,6 +1249,7 @@ class Shark(pygame.sprite.Sprite):
         self.health -= 1
         if self.is_boss and self.health <= 0:
             SFX_BOSS_DIE.play()
+            stop_boss_music(resume_normal=True)
             self.kill()
             return True
         if self.health <= 0 and self.is_boss == False:
@@ -1346,7 +1381,7 @@ class OxygenTankPickup(pygame.sprite.Sprite):
     Collectible oxygen tank.  Reuses OxygenTank for the bob animation;
     lives in world-space as a normal Sprite so CameraGroup can draw it.
     """
-    REFILL = 60          # oxygen points restored on pickup
+    REFILL = 100          # oxygen points restored on pickup
     LIFETIME = 18.0      # seconds before it despawns
 
     def __init__(self, pos, groups):
@@ -1371,7 +1406,7 @@ class OxygenTankPickup(pygame.sprite.Sprite):
         self.bob_offset = (math.sin(now * OxygenTank.BOB_SPEED +
                                     self._tank.time_offset) * OxygenTank.BOB_AMPLITUDE)
         self.rect.center = self.pos
-        
+
 
 
 # ---------------------------------------------------------------------------
@@ -1772,7 +1807,7 @@ def draw_ui():
 
     # ── Oxygen bar (bottom-left, below harpoon) ──────────────────────────
     o2_bar_w, o2_bar_h = 200, 16
-    o2_bar_x, o2_bar_y = 16, WINDOW_HEIGHT - 90
+    o2_bar_x, o2_bar_y = 16, WINDOW_HEIGHT - 110
     o2_ratio   = player.oxygen / player.max_oxygen
     o2_col     = (0, 200, 255) if o2_ratio > 0.3 else (255, 80, 80)
     _draw_panel(o2_bar_x - 10, o2_bar_y - 30, o2_bar_w + 20, o2_bar_h + 42, alpha=180, radius=10)
@@ -1813,19 +1848,101 @@ def draw_ui():
         ws.set_alpha(alpha)
         display_surface.blit(ws, ws.get_rect(center=(WINDOW_WIDTH // 2, WINDOW_HEIGHT // 2 - 12)))
 
-    # ── Boss announce ─────────────────────────────────────────────────────
+    # ── Boss announce — 6-second cinematic sequence ──────────────────────
     if boss_announce_timer > 0 and player.alive and not level_complete:
-        t     = boss_announce_timer / 3.5
-        alpha = min(255, int(t * 255))
-        bar_s = pygame.Surface((WINDOW_WIDTH, 180), pygame.SRCALPHA)
-        bar_s.fill((0, 0, 0, int(t * 210)))
-        display_surface.blit(bar_s, (0, WINDOW_HEIGHT // 2 - 90))
-        ns = menu_title_font.render("THE SHARKFATHER", True, (255, 205, 50))
-        ns.set_alpha(alpha)
-        display_surface.blit(ns, ns.get_rect(center=(WINDOW_WIDTH // 2, WINDOW_HEIGHT // 2 - 22)))
-        ss = title_font.render("has arrived...", True, (220, 160, 40))
-        ss.set_alpha(alpha)
-        display_surface.blit(ss, ss.get_rect(center=(WINDOW_WIDTH // 2, WINDOW_HEIGHT // 2 + 36)))
+        t   = boss_announce_timer          # counts 6→0
+        cx_ = WINDOW_WIDTH  // 2
+        cy_ = WINDOW_HEIGHT // 2
+
+        if t > 5.5:
+            # Phase 1 — sudden black flash (0.5 s)
+            phase_a = int(255 * ((t - 5.5) / 0.5))
+            flash = pygame.Surface((WINDOW_WIDTH, WINDOW_HEIGHT), pygame.SRCALPHA)
+            flash.fill((0, 0, 0, phase_a))
+            display_surface.blit(flash, (0, 0))
+
+        elif t > 4.0:
+            # Phase 2 — letterbox bars slide in + title wipes L→R (1.5 s)
+            phase_t = (t - 4.0) / 1.5        # 1→0 as time passes
+            bar_h   = 90
+            # top bar slides down from off-screen
+            bar_top = round(-bar_h + bar_h * (1 - phase_t))
+            # bottom bar slides up from off-screen
+            bar_bot = WINDOW_HEIGHT - round(bar_h * (1 - phase_t))
+            bar_s   = pygame.Surface((WINDOW_WIDTH, bar_h))
+            bar_s.fill((0, 0, 0))
+            display_surface.blit(bar_s, (0, bar_top))
+            display_surface.blit(bar_s, (0, bar_bot))
+
+            # dark dim over game world
+            dim = pygame.Surface((WINDOW_WIDTH, WINDOW_HEIGHT), pygame.SRCALPHA)
+            dim.fill((0, 0, 0, 160))
+            display_surface.blit(dim, (0, 0))
+
+            # title wipes in from the left
+            wipe_frac = 1.0 - phase_t          # 0→1
+            ns_full   = menu_title_font.render("THE SHARKFATHER", True, (255, 210, 50))
+            wipe_w    = round(ns_full.get_width() * wipe_frac)
+            if wipe_w > 0:
+                ns_clip = ns_full.subsurface((0, 0, wipe_w, ns_full.get_height()))
+                r       = ns_full.get_rect(center=(cx_, cy_ - 30))
+                display_surface.blit(ns_clip, (r.x, r.y))
+
+        elif t > 1.0:
+            # Phase 3 — title holds + subtitle fades in + gold pulse (3 s)
+            phase_t    = (t - 1.0) / 3.0      # 1→0
+            fade_alpha = min(255, int(255 * (1.0 - phase_t + 0.3)))
+
+            # bars stay fixed
+            bar_s = pygame.Surface((WINDOW_WIDTH, 90))
+            bar_s.fill((0, 0, 0))
+            display_surface.blit(bar_s, (0, 0))
+            display_surface.blit(bar_s, (0, WINDOW_HEIGHT - 90))
+
+            dim = pygame.Surface((WINDOW_WIDTH, WINDOW_HEIGHT), pygame.SRCALPHA)
+            dim.fill((0, 0, 0, 150))
+            display_surface.blit(dim, (0, 0))
+
+            # pulsing gold glow behind title
+            glow_a = int((80 + 50 * sin(pygame.time.get_ticks() / 180)) * min(1.0, fade_alpha / 255))
+            glow   = pygame.Surface((700, 100), pygame.SRCALPHA)
+            glow.fill((200, 140, 0, glow_a))
+            display_surface.blit(glow, glow.get_rect(center=(cx_, cy_ - 30)))
+
+            ns = menu_title_font.render("THE SHARKFATHER", True, (255, 215, 55))
+            ns.set_alpha(min(255, fade_alpha + 80))
+            display_surface.blit(ns, ns.get_rect(center=(cx_, cy_ - 30)))
+
+            # subtitle fades in after 0.6 s into phase
+            sub_a = max(0, min(255, int((1.0 - phase_t - 0.4) / 0.6 * 255)))
+            ss = title_font.render("The king of the deep has arrived...", True, (220, 170, 45))
+            ss.set_alpha(sub_a)
+            display_surface.blit(ss, ss.get_rect(center=(cx_, cy_ + 42)))
+
+            # small divider line under title
+            if sub_a > 0:
+                div = pygame.Surface((500, 2), pygame.SRCALPHA)
+                div.fill((255, 200, 60, sub_a))
+                display_surface.blit(div, div.get_rect(center=(cx_, cy_ + 10)))
+
+        else:
+            # Phase 4 — everything fades out (1 s)
+            fade_a = int(255 * (t / 1.0))
+            bar_s  = pygame.Surface((WINDOW_WIDTH, 90))
+            bar_s.fill((0, 0, 0))
+            display_surface.blit(bar_s, (0, 0))
+            display_surface.blit(bar_s, (0, WINDOW_HEIGHT - 90))
+
+            dim = pygame.Surface((WINDOW_WIDTH, WINDOW_HEIGHT), pygame.SRCALPHA)
+            dim.fill((0, 0, 0, int(150 * t)))
+            display_surface.blit(dim, (0, 0))
+
+            ns = menu_title_font.render("THE SHARKFATHER", True, (255, 215, 55))
+            ns.set_alpha(fade_a)
+            display_surface.blit(ns, ns.get_rect(center=(cx_, cy_ - 30)))
+            ss = title_font.render("The king of the deep has arrived...", True, (220, 170, 45))
+            ss.set_alpha(fade_a)
+            display_surface.blit(ss, ss.get_rect(center=(cx_, cy_ + 42)))
 
     # ── Boss warning ticker ───────────────────────────────────────────────
     if boss_spawned and not level_complete and boss_announce_timer <= 0:
@@ -1888,6 +2005,7 @@ def reset_game():
     boss_announce_timer = 0.0
     wave_announce_timer = 0.0
     tutorial_overlay.visible = True
+    stop_boss_music(resume_normal=True)
     start_wave(0)
 
 
@@ -2395,7 +2513,7 @@ while running:
             if is_boss and not boss_spawned:
                 spawn_shark(is_boss=True)
                 boss_spawned        = True
-                boss_announce_timer = 3.5   # seconds to show "THE SHARKFATHER" flash
+                boss_announce_timer = 6.0   # 6-second cinematic intro
                 pygame.time.set_timer(SHARK_SPAWN_EVENT, 0)
             elif not is_boss and sharks_spawned_this_wave < cfg["count"]:
                 spawn_shark(is_boss=False)
@@ -2473,6 +2591,7 @@ while running:
         collected = pygame.sprite.spritecollide(player, fragment_sprites, True)
         if collected:
             level_complete = True
+            stop_boss_music(resume_normal=False)
             pygame.time.set_timer(SHARK_SPAWN_EVENT, 0)
             pygame.time.set_timer(HEALTH_BUBBLE_EVENT, 0)
 
@@ -2524,7 +2643,7 @@ while running:
             player.oxygen       = min(player.max_oxygen,
                                       player.oxygen + OxygenTankPickup.REFILL)
             player.oxygen_empty = False
-            SFX_PLAYER_DIE.play()   # reuse the oxygen-tank sound
+            SFX_OXYGEN_PICKUP.play()
 
     # -------------------------------------------------------------------
     # Player <-> shark damage
@@ -2551,10 +2670,13 @@ while running:
 
         if wave_done:
             wave_ending = True
-            pygame.time.set_timer(SHARK_SPAWN_EVENT, 0)   # stop any remaining spawns
+            pygame.time.set_timer(SHARK_SPAWN_EVENT, 0)
             # Tutorial wave: dismiss overlay
             if current_wave == 0:
                 tutorial_overlay.visible = False
+            # Wave 4 ends → boss wave incoming; start music now so it builds during countdown
+            if current_wave == 4:
+                start_boss_music()
             between_wave_timer = BETWEEN_WAVE_DELAY
 
         # Tick down the between-wave countdown

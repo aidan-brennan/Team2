@@ -106,8 +106,6 @@ p:last-child { margin-bottom: 0; }
 }
 .nav-logo:hover { color: var(--gold); }
 .nav-logo.small { font-size: .5rem; }
-.logo-anchor { color: var(--gold); font-size: 1.15em; }
-.anchor-big  { color: var(--gold); }
 
 /* Nav links */
 .nav-links {

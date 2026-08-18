@@ -1574,7 +1574,12 @@ jellies_spawned_this_wave = 0
 wave_kills               = 0      # total enemies killed this wave
 wave_ending              = False
 boss_spawned             = False
-boss_announce_timer      = 0.0    # counts down after boss spawns for the name flash
+boss_pending              = False  # True while "THE SHARKFATHER" cinematic plays, before the boss actually spawns
+boss_announce_timer      = 0.0    # counts down during the boss cinematic (starts at BOSS_ANNOUNCE_DURATION)
+boss_intro_timer         = 0.0    # counts down after boss music starts; cinematic begins when it hits 0
+
+BOSS_ANNOUNCE_DURATION = 3.0   # total length of the "THE SHARKFATHER" cinematic, in seconds
+BOSS_SPAWN_LEAD        = 0.8   # boss spawns this many seconds before the cinematic finishes fading out
 level_complete           = False
 between_wave_timer       = 0.0
 wave_announce_timer      = 0.0
@@ -1594,14 +1599,19 @@ def wave_config():
 
 def start_wave(wave_idx):
     global current_wave, sharks_spawned_this_wave, jellies_spawned_this_wave
-    global wave_kills, wave_ending, boss_spawned, wave_announce_timer, boss_announce_timer
+    global wave_kills, wave_ending, boss_spawned, wave_announce_timer
     current_wave              = wave_idx
     sharks_spawned_this_wave  = 0
     jellies_spawned_this_wave = 0
     wave_kills                = 0
     wave_ending               = False
     boss_spawned              = False
-    boss_announce_timer       = 0.0
+    # NOTE: boss_pending/boss_announce_timer are deliberately NOT reset here.
+    # The wave 4->5 transition calls start_wave(5) partway through the
+    # "THE SHARKFATHER" cinematic (which now starts shortly after the boss
+    # music does, not when this wave officially begins) — resetting them on
+    # every wave_idx change would cut that cinematic short. They're reset
+    # explicitly by reset_game()/run_level1()'s initial state instead.
     wave_announce_timer       = 2.5
     cfg = wave_config()
     pygame.time.set_timer(SHARK_SPAWN_EVENT, cfg["interval"])
@@ -1786,22 +1796,15 @@ def draw_ui():
         ws.set_alpha(alpha)
         display_surface.blit(ws, ws.get_rect(center=(WINDOW_WIDTH // 2, WINDOW_HEIGHT // 2)))
 
-    # ── Boss announce — 6-second cinematic sequence ──────────────────────
+    # ── Boss announce — short cinematic sequence ──────────────────────────
     if boss_announce_timer > 0 and player.alive and not level_complete:
-        t   = boss_announce_timer          # counts 6→0
+        t   = boss_announce_timer          # counts BOSS_ANNOUNCE_DURATION→0
         cx_ = WINDOW_WIDTH  // 2
         cy_ = WINDOW_HEIGHT // 2
 
-        if t > 5.5:
-            # Phase 1 — sudden black flash (0.5 s)
-            phase_a = int(255 * ((t - 5.5) / 0.5))
-            flash = pygame.Surface((WINDOW_WIDTH, WINDOW_HEIGHT), pygame.SRCALPHA)
-            flash.fill((0, 0, 0, phase_a))
-            display_surface.blit(flash, (0, 0))
-
-        elif t > 4.0:
-            # Phase 2 — letterbox bars slide in + title wipes L→R (1.5 s)
-            phase_t = (t - 4.0) / 1.5        # 1→0 as time passes
+        if t > BOSS_SPAWN_LEAD + 1.5:
+            # Phase 1 — letterbox bars slide in + title wipes L→R (0.7 s)
+            phase_t = (t - (BOSS_SPAWN_LEAD + 1.5)) / 0.7   # 1→0 as time passes
             bar_h   = 90
             # top bar slides down from off-screen
             bar_top = round(-bar_h + bar_h * (1 - phase_t))
@@ -1826,9 +1829,9 @@ def draw_ui():
                 r       = ns_full.get_rect(center=(cx_, cy_ - 30))
                 display_surface.blit(ns_clip, (r.x, r.y))
 
-        elif t > 1.0:
-            # Phase 3 — title holds + subtitle fades in + gold pulse (3 s)
-            phase_t    = (t - 1.0) / 3.0      # 1→0
+        elif t > BOSS_SPAWN_LEAD:
+            # Phase 2 — title holds + subtitle fades in + gold pulse (1.5 s)
+            phase_t    = (t - BOSS_SPAWN_LEAD) / 1.5      # 1→0
             fade_alpha = min(255, int(255 * (1.0 - phase_t + 0.3)))
 
             # bars stay fixed
@@ -1864,15 +1867,16 @@ def draw_ui():
                 display_surface.blit(div, div.get_rect(center=(cx_, cy_ + 10)))
 
         else:
-            # Phase 4 — everything fades out (1 s)
-            fade_a = int(255 * (t / 1.0))
+            # Phase 3 — everything fades out while the boss appears (BOSS_SPAWN_LEAD s)
+            fade_frac = t / BOSS_SPAWN_LEAD    # 1→0
+            fade_a = int(255 * fade_frac)
             bar_s  = pygame.Surface((WINDOW_WIDTH, 90))
             bar_s.fill((0, 0, 0))
             display_surface.blit(bar_s, (0, 0))
             display_surface.blit(bar_s, (0, WINDOW_HEIGHT - 90))
 
             dim = pygame.Surface((WINDOW_WIDTH, WINDOW_HEIGHT), pygame.SRCALPHA)
-            dim.fill((0, 0, 0, int(150 * t)))
+            dim.fill((0, 0, 0, int(150 * fade_frac)))
             display_surface.blit(dim, (0, 0))
 
             ns = menu_title_font.render("THE SHARKFATHER", True, (255, 215, 55))
@@ -1924,7 +1928,8 @@ def _draw_end_screen(title_text, title_col, sub_text):
 # ---------------------------------------------------------------------------
 def reset_game():
     global wave_kills, sharks_spawned_this_wave, jellies_spawned_this_wave, wave_ending
-    global boss_spawned, boss_announce_timer, level_complete, between_wave_timer, wave_announce_timer
+    global boss_spawned, boss_pending, boss_announce_timer, boss_intro_timer
+    global level_complete, between_wave_timer, wave_announce_timer
     for sprite in list(shark_sprites):        sprite.kill()
     for sprite in list(jellyfish_sprites):    sprite.kill()
     for sprite in list(bolt_sprites):         sprite.kill()
@@ -1940,8 +1945,11 @@ def reset_game():
     player.rect.center = (WORLD_BOUNDS.centerx, WORLD_BOUNDS.centery)
     player.invincible_until = 0
     between_wave_timer  = 0.0
-    boss_announce_timer = 0.0
-    wave_announce_timer = 0.0
+    boss_spawned         = False
+    boss_pending          = False
+    boss_announce_timer  = 0.0
+    boss_intro_timer     = 0.0
+    wave_announce_timer  = 0.0
     tutorial_overlay.visible = True
     stop_boss_music(resume_normal=True)
     start_wave(0)
@@ -2148,7 +2156,7 @@ def run_level1(screen, music_volume=0.6, sfx_volume=0.7):
     global bolt_sprites, bubble_sprites, fragment_sprites, healthbubble_sprites, oxygentank_sprites
     global player
     global current_wave, sharks_spawned_this_wave, jellies_spawned_this_wave
-    global wave_kills, wave_ending, boss_spawned, boss_announce_timer
+    global wave_kills, wave_ending, boss_spawned, boss_pending, boss_announce_timer, boss_intro_timer
     global level_complete, between_wave_timer, wave_announce_timer
     global tutorial_overlay
 
@@ -2257,7 +2265,9 @@ def run_level1(screen, music_volume=0.6, sfx_volume=0.7):
     wave_kills                = 0
     wave_ending               = False
     boss_spawned              = False
+    boss_pending               = False
     boss_announce_timer       = 0.0
+    boss_intro_timer          = 0.0
     level_complete            = False
     between_wave_timer        = 0.0
     wave_announce_timer       = 0.0
@@ -2310,10 +2320,12 @@ def run_level1(screen, music_volume=0.6, sfx_volume=0.7):
                 cfg     = wave_config()
                 is_boss = cfg["boss"]
 
-                if is_boss and not boss_spawned:
-                    spawn_shark(is_boss=True)
-                    boss_spawned        = True
-                    boss_announce_timer = 6.0   # 6-second cinematic intro
+                if is_boss and not boss_spawned and not boss_pending:
+                    # Play "THE SHARKFATHER" cinematic first; the boss itself
+                    # spawns once it finishes (see the boss_announce_timer
+                    # countdown below).
+                    boss_pending        = True
+                    boss_announce_timer = BOSS_ANNOUNCE_DURATION
                     pygame.time.set_timer(SHARK_SPAWN_EVENT, 0)
                 elif not is_boss and sharks_spawned_this_wave < cfg["count"]:
                     spawn_shark(is_boss=False)
@@ -2358,8 +2370,22 @@ def run_level1(screen, music_volume=0.6, sfx_volume=0.7):
         if wave_announce_timer > 0:
             wave_announce_timer = max(0.0, wave_announce_timer - dt)
 
+        if boss_intro_timer > 0:
+            boss_intro_timer = max(0.0, boss_intro_timer - dt)
+            if boss_intro_timer == 0.0 and not boss_pending and not boss_spawned:
+                boss_pending        = True
+                boss_announce_timer = BOSS_ANNOUNCE_DURATION   # kicks off the cinematic below
+
         if boss_announce_timer > 0:
-            boss_announce_timer = max(0.0, boss_announce_timer - dt)
+            prev_announce_timer  = boss_announce_timer
+            boss_announce_timer  = max(0.0, boss_announce_timer - dt)
+            # Boss spawns partway through the cinematic (while it's fading
+            # out) rather than waiting for the whole thing to finish.
+            if (boss_pending and not boss_spawned
+                    and prev_announce_timer > BOSS_SPAWN_LEAD >= boss_announce_timer):
+                spawn_shark(is_boss=True)
+                boss_spawned = True
+                boss_pending = False
 
         if current_wave == 0 and tutorial_overlay.visible:
             tutorial_overlay.update(dt)
@@ -2461,6 +2487,7 @@ def run_level1(screen, music_volume=0.6, sfx_volume=0.7):
                 # Wave 4 ends → boss wave incoming; start music now so it builds during countdown
                 if current_wave == 4:
                     start_boss_music()
+                    boss_intro_timer = 1.0   # "THE SHARKFATHER" cinematic starts 1s after the music does
                 between_wave_timer = BETWEEN_WAVE_DELAY
 
             # Tick down the between-wave countdown

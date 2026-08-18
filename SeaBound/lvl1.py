@@ -1769,18 +1769,22 @@ def draw_ui():
     pygame.draw.rect(display_surface, (200, 170, 110), (bar_x - 8, bar_y + 4, 8, 8), 1, border_radius=2)
 
     # ── Wave start flash ─────────────────────────────────────────────────
-    if wave_announce_timer > 0 and between_wave_timer == 0 and player.alive and not level_complete:
-        t     = wave_announce_timer / 2.5
-        alpha = min(255, int(t * 255))
-        wlbl  = "TUTORIAL" if current_wave == 0 else f"WAVE  {current_wave}"
-        # black letterbox bars
-        bar_s = pygame.Surface((WINDOW_WIDTH, 70), pygame.SRCALPHA)
+    # Skipped for the boss wave — that gets its own "THE SHARKFATHER" cinematic
+    # a moment later, so showing "WAVE 5" here first is just redundant.
+    if (wave_announce_timer > 0 and between_wave_timer == 0 and player.alive
+            and not level_complete and not wave_config()["boss"]):
+        t      = wave_announce_timer / 2.5
+        alpha  = min(255, int(t * 255))
+        wlbl   = "TUTORIAL" if current_wave == 0 else f"WAVE  {current_wave}"
+        # single black letterbox band, centred on the screen
+        band_h = 140
+        band_y = WINDOW_HEIGHT // 2 - band_h // 2
+        bar_s  = pygame.Surface((WINDOW_WIDTH, band_h), pygame.SRCALPHA)
         bar_s.fill((0, 0, 0, int(t * 200)))
-        display_surface.blit(bar_s, (0, WINDOW_HEIGHT // 2 - 60))
-        display_surface.blit(bar_s, (0, WINDOW_HEIGHT // 2 + 10))
+        display_surface.blit(bar_s, (0, band_y))
         ws = menu_title_font.render(wlbl, True, (100, 210, 255))
         ws.set_alpha(alpha)
-        display_surface.blit(ws, ws.get_rect(center=(WINDOW_WIDTH // 2, WINDOW_HEIGHT // 2 - 12)))
+        display_surface.blit(ws, ws.get_rect(center=(WINDOW_WIDTH // 2, WINDOW_HEIGHT // 2)))
 
     # ── Boss announce — 6-second cinematic sequence ──────────────────────
     if boss_announce_timer > 0 and player.alive and not level_complete:

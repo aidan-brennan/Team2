@@ -731,7 +731,7 @@ def run_level2(screen, music_volume=0.6, sfx_volume=0.7):
                     t.passed = True
                     score += 1
                     ding_sound.play()   # play ding on every point
-                    if score >= 50 and map_fragment is None:
+                    if score >= 30 and map_fragment is None:
                         map_fragment = MapFragment(Diver.x + 300, Diver.y)
 
             if map_fragment and not map_fragment.collected:

@@ -275,7 +275,6 @@ p:last-child { margin-bottom: 0; }
   letter-spacing: .08em;
   text-shadow: 0 1px 4px rgba(0,0,0,.6);
 }
-.review-div { display: none; }
 @media (max-width: 700px) {
   .hero-sky-row     { flex-direction: column; gap: .75rem; }
   .hero-reviews-left,
@@ -287,8 +286,6 @@ p:last-child { margin-bottom: 0; }
   position: absolute;
   cursor: pointer;
   border-radius: 4px;
-  /* ── DEBUG: uncomment the line below to see all hotspot boxes ──
-  outline: 2px solid red !important; background: rgba(255,0,0,0.15) !important; */
 }
 .hotspot:hover {
   background: transparent;
@@ -402,10 +399,6 @@ p:last-child { margin-bottom: 0; }
   object-fit: contain;
   image-rendering: pixelated;
   display: block;
-}
-.card-icon-img--large {
-  width: 5rem;
-  height: 5rem;
 }
 .card h3 {
   font-family: var(--pixel-font);
@@ -604,7 +597,6 @@ p:last-child { margin-bottom: 0; }
   cursor: pointer;
 }
 .art-card:hover { border-color: var(--gold); transform: scale(1.02); }
-.art-card canvas { width: 100%; image-rendering: pixelated; display: block; }
 .art-card .art-img {
   width: 100%;
   display: block;
@@ -623,6 +615,20 @@ p:last-child { margin-bottom: 0; }
 }
 
 /* ── Merch ───────────────────────────────────────────────────────────────── */
+.support-sub-title {
+  text-align: center;
+  color: var(--aqua);
+  letter-spacing: .2em;
+  margin-bottom: .6rem;
+  margin-top: 1rem;
+}
+.support-sub-title::after {
+  content: '';
+  display: block;
+  width: 40px; height: 2px;
+  background: var(--seafoam);
+  margin: .5rem auto 0;
+}
 .merch-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
@@ -680,6 +686,47 @@ p:last-child { margin-bottom: 0; }
   justify-content: center;
   border: none;
   cursor: pointer;
+  text-align: center;
+}
+
+/* ── Donation cards ──────────────────────────────────────────────────────── */
+.donate-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 1.5rem;
+  margin-top: 0;
+}
+.donate-card {
+  background: var(--card-bg);
+  border: 2px solid var(--border);
+  border-radius: 6px;
+  padding: 2rem 1.5rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: .75rem;
+  text-align: center;
+  transition: border-color .25s, transform .2s, box-shadow .25s;
+}
+.donate-card:hover {
+  border-color: var(--seafoam);
+  transform: translateY(-4px);
+  box-shadow: 0 8px 28px rgba(77,217,172,.2);
+}
+.donate-amount {
+  font-family: var(--pixel-font);
+  font-size: 1.2rem;
+  color: var(--gold);
+}
+.donate-label {
+  font-family: var(--body-font);
+  font-size: 1rem;
+  color: var(--muted);
+}
+.donate-btn {
+  margin-top: .25rem;
+  font-size: .42rem;
+  padding: .55rem 1.1rem;
 }
 
 /* ── Social ──────────────────────────────────────────────────────────────── */
@@ -871,14 +918,6 @@ footer p { font-size: .85rem; color: var(--muted); margin: 0; }
   color: var(--aqua);
   letter-spacing: .15em;
 }
-.play-sub {
-  font-family: var(--body-font);
-  font-size: .9rem;
-  color: var(--muted);
-  letter-spacing: .08em;
-  text-transform: uppercase;
-}
-
 .play-back {
   font-size: .42rem;
   padding: .55rem 1rem;
@@ -909,54 +948,6 @@ footer p { font-size: .85rem; color: var(--muted); margin: 0; }
   image-rendering: pixelated;
 }
 
-/* Controls bar */
-.play-controls {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-wrap: wrap;
-  gap: .5rem 1.5rem;
-  background: var(--card-bg);
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  padding: .85rem 1.5rem;
-  width: 100%;
-  max-width: 800px;
-}
-
-.ctrl-item {
-  display: flex;
-  align-items: center;
-  gap: .4rem;
-  font-family: var(--body-font);
-  font-size: .88rem;
-  color: var(--muted);
-}
-
-kbd {
-  font-family: var(--pixel-font);
-  font-size: .4rem;
-  background: rgba(0,153,204,.18);
-  border: 1px solid var(--teal);
-  color: var(--aqua);
-  padding: .3rem .55rem;
-  border-radius: 3px;
-  letter-spacing: .05em;
-}
-
-.ctrl-sep {
-  width: 1px;
-  height: 24px;
-  background: var(--border);
-}
-
-.ctrl-tip {
-  font-size: .8rem;
-  color: var(--muted);
-  opacity: .7;
-}
-
 @media (max-width: 600px) {
-  .play-controls { flex-direction: column; align-items: flex-start; gap: .6rem; }
   .ctrl-sep { display: none; }
 }

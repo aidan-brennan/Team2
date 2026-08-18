@@ -14,14 +14,16 @@ class OxygenTank:
     def __init__(self, x, y, image, refill_amount):
         self.image = image
         self.rect = self.image.get_rect(topleft=(x, y))
-        self.base_y = y                          # stable Y for collision
-        self.time_offset = random.uniform(0, 2 * math.pi)  # random phase
+        self.float_x = float(x)      # precise float position to avoid drift
+        self.base_y = y
+        self.time_offset = random.uniform(0, 2 * math.pi)
         self.refill_amount = refill_amount
         self.collected = False
 
     def update(self, speed):
         """Move the tank left at the given scroll speed."""
-        self.rect.x -= speed
+        self.float_x -= speed
+        self.rect.x = int(self.float_x)
 
     def offscreen(self):
         return self.rect.right < 0
@@ -55,11 +57,14 @@ class OxygenSystem:
         max_tanks_on_screen=2,
         respawn_delay_ms=(4000, 6000),
         margin=40,
-        
+        tentacle_gap=120,
+        ground_height=40,
     ):
         self.screen_width = screen_width
         self.screen_height = screen_height
         self.tank_size = tank_size
+        self.tentacle_gap   = tentacle_gap
+        self.ground_height  = ground_height
 
         self.max_oxygen = max_oxygen
         self.oxygen = max_oxygen
@@ -97,11 +102,34 @@ class OxygenSystem:
         delay = 0 if immediate else random.randint(*self.respawn_delay_ms)
         self.next_spawn_time = pygame.time.get_ticks() + delay
 
-    def _spawn_tank(self):
-        # Spawn just off the right edge so the tank scrolls in like tentacles
+    def _spawn_tank(self, tentacles=None):
+        """Spawn a tank just off the right edge, centred inside a tentacle gap."""
         x = self.screen_width + self.margin
-        y = random.randint(self.margin, self.screen_height - self.margin - self.tank_size[1])
+        h = self.tank_size[1]
+
+        gap_y = self._pick_gap_y(tentacles)
+        # centre the tank vertically inside the gap, with a small random nudge
+        half_gap   = self.tentacle_gap // 2
+        safe_range = half_gap - h // 2 - 4   # keep tank fully inside the gap
+        if safe_range > 0:
+            offset = random.randint(-safe_range, safe_range)
+        else:
+            offset = 0
+        y = gap_y - h // 2 + offset
+        # hard clamp so it never leaves the playfield
+        y = max(self.margin, min(self.screen_height - self.ground_height - h - self.margin, y))
         self.tanks.append(OxygenTank(x, y, self.image, self.refill_amount))
+
+    def _pick_gap_y(self, tentacles):
+        """Return the gap_y of the nearest upcoming tentacle, or screen centre."""
+        if tentacles:
+            # find the tentacle that is furthest right (hasn't scrolled past screen yet)
+            upcoming = [t for t in tentacles if t.x > 0]
+            if upcoming:
+                nearest = min(upcoming, key=lambda t: t.x)
+                return nearest.gap_y
+        # fallback: safe mid-screen height
+        return self.screen_height // 2
 
     # -- public API ---------------------------------------------------
 
@@ -118,7 +146,7 @@ class OxygenSystem:
         """Called by level2 whenever the SFX slider changes."""
         self._collect_sound.set_volume(volume)
 
-    def update(self, dt, player_rect, scroll_speed=3):
+    def update(self, dt, player_rect, scroll_speed=3, tentacles=None):
         # deplete oxygen over time
         self.oxygen -= self.drain_per_second * dt
         self.oxygen = max(0, self.oxygen)
@@ -126,7 +154,7 @@ class OxygenSystem:
         # spawn new tanks up to the max, on a random delay
         now = pygame.time.get_ticks()
         if len(self.tanks) < self.max_tanks_on_screen and now >= self.next_spawn_time:
-            self._spawn_tank()
+            self._spawn_tank(tentacles)
             self._queue_next_spawn()
 
         # scroll tanks left

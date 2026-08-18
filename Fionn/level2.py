@@ -24,7 +24,8 @@ diver_size = (95, 75)
 
 tentacle_width = 110
 tentacle_gap = 120
-tentacle_speed = 4
+tentacle_speed_base = 4       # starting speed — difficulty scales from here
+tentacle_speed = tentacle_speed_base
 tentacle_spawn_min = 1000
 tentacle_spawn_max = 2000
 tentacle_spawn_ms = random.randint(tentacle_spawn_min, tentacle_spawn_max)
@@ -75,7 +76,7 @@ font_small = pygame.font.SysFont(None, 32)
 
 
 class diver:
-    FRAME_DURATION = 0.10
+    FRAME_DURATION = 0.25
 
     def __init__(self):
         self.x = diver_x
@@ -559,18 +560,20 @@ def reset_game():
     score        = 0
     bg_x         = 0
     map_fragment = None
-    oxygen_system = OxygenSystem(WIDTH, HEIGHT, image_path="images/o2 tank.png")
+    oxygen_system = OxygenSystem(WIDTH, HEIGHT, image_path="images/o2 tank.png",
+                                  tentacle_gap=tentacle_gap, ground_height=Ground_height)
     bubbles = [Bubble(random.randint(0, WIDTH), HEIGHT - Ground_height) for _ in range(6)]
     return Diver, Tentacles, score, oxygen_system, bg_x, bubbles, map_fragment
 
 
 def main():
-    global tentacle_spawn_ms
+    global tentacle_spawn_ms, tentacle_speed
     Diver, Tentacles, score, oxygen_system, bg_x, bubbles, map_fragment = reset_game()
-    oxygen_system.set_sfx_volume(sfx_volume)   # sync startup volume
+    oxygen_system.set_sfx_volume(sfx_volume)
     game_over      = False
     level_complete = False
     started        = False
+    elapsed        = 0.0   # seconds since the game started (pausing doesn't count)
 
     last_tentacle_time = pygame.time.get_ticks()
     running = True
@@ -600,6 +603,8 @@ def main():
                     game_over      = False
                     level_complete = False
                     started        = False
+                    elapsed        = 0.0
+                    tentacle_speed = tentacle_speed_base
             if event.type == pygame.MOUSEBUTTONDOWN:
                 swim_pressed = True
 
@@ -610,6 +615,24 @@ def main():
             Diver.swim()
 
         if not game_over and not level_complete and started:
+            elapsed += dt
+
+            # ── difficulty ramp ───────────────────────────────────────────
+            # difficulty goes from 1.0 at start to 2.0 at 90 seconds, capped there
+            difficulty = 1.0 + min(1.0, elapsed / 90.0)
+
+            # scroll speed: 4 → 8 over 90 s
+            tentacle_speed = tentacle_speed_base * difficulty
+
+            # spawn interval: 1000-2000 ms → 500-1000 ms over 90 s
+            spawn_scale = 1.0 / difficulty   # shrinks interval as difficulty grows
+            current_spawn_min = int(tentacle_spawn_min * spawn_scale)
+            current_spawn_max = int(tentacle_spawn_max * spawn_scale)
+
+            # oxygen drain: 5 → 10 per second over 90 s
+            oxygen_system.drain_per_second = 5.0 * difficulty
+            # ─────────────────────────────────────────────────────────────
+
             Diver.update(dt)
 
             bg_x -= tentacle_speed
@@ -629,7 +652,7 @@ def main():
             if now - last_tentacle_time > tentacle_spawn_ms:
                 Tentacles.append(Tentacle(WIDTH + 20))
                 last_tentacle_time = now
-                tentacle_spawn_ms = random.randint(tentacle_spawn_min, tentacle_spawn_max)
+                tentacle_spawn_ms = random.randint(current_spawn_min, current_spawn_max)
 
             for t in Tentacles:
                 t.update()
@@ -640,7 +663,7 @@ def main():
                     t.passed = True
                     score += 1
                     ding_sound.play()   # play ding on every point
-                    if score >= 30 and map_fragment is None:
+                    if score >= 50 and map_fragment is None:
                         map_fragment = MapFragment(Diver.x + 300, Diver.y)
 
             if map_fragment and not map_fragment.collected:
@@ -664,7 +687,8 @@ def main():
                 if t.check_collision(Diver_rect):
                     game_over = True
 
-            if oxygen_system.update(dt, Diver.get_rect(), scroll_speed=tentacle_speed):
+            if oxygen_system.update(dt, Diver.get_rect(), scroll_speed=tentacle_speed,
+                                     tentacles=Tentacles):
                 game_over = True
 
         draw_background(screen, bg_x)

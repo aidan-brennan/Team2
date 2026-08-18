@@ -18,7 +18,7 @@ small_font = pygame.font.SysFont("arial", 22)
 big_font = pygame.font.SysFont("arial", 64, bold=True)
 title_font = pygame.font.SysFont("arial", 40, bold=True)
 
-pygame.mixer.music.load("sounds/soundlevel2.mp3")
+pygame.mixer.music.load("sounds/level1music.mp3")
 pygame.mixer.music.set_volume(0.5)
 pygame.mixer.music.play(-1)
 
@@ -46,7 +46,7 @@ def stop_boss_music(resume_normal=True):
         pygame.mixer.Channel(i).set_volume(1.0)
     if resume_normal:
         try:
-            pygame.mixer.music.load("sounds/soundlevel2.mp3")
+            pygame.mixer.music.load("sounds/level1music.mp3")
             pygame.mixer.music.set_volume(music_volume)
             pygame.mixer.music.play(-1, fade_ms=1500)
         except pygame.error:

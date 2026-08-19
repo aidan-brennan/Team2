@@ -103,6 +103,7 @@ class Tentacle:
         self.gap_y = random.randint(120, HEIGHT - Ground_height - 120)
         self.width = tentacle_width
         self.passed = False
+        self.forced_gap = False   # set True when this tentacle hosts the map fragment
         self.time_offset = random.uniform(0, 2 * math.pi)
         self._last_top_h = -1
         self._last_bot_h = -1
@@ -114,11 +115,16 @@ class Tentacle:
     def update(self):
         self.x -= tentacle_speed
 
+    def _effective_half_gap(self):
+        """Return half the gap opening — wider when hosting the map fragment."""
+        return 220 if self.forced_gap else tentacle_gap // 2
+
     def get_rects(self):
-        top_rect = pygame.Rect(self.x, 0, self.width, self.gap_y - tentacle_gap // 2)
+        hg = self._effective_half_gap()
+        top_rect = pygame.Rect(self.x, 0, self.width, max(1, self.gap_y - hg))
         bottom_rect = pygame.Rect(
-            self.x, self.gap_y + tentacle_gap // 2,
-            self.width, HEIGHT - (self.gap_y + tentacle_gap // 2) - Ground_height
+            self.x, self.gap_y + hg,
+            self.width, max(1, HEIGHT - (self.gap_y + hg) - Ground_height)
         )
         return top_rect, bottom_rect
 
@@ -691,6 +697,7 @@ def run_level2(screen, music_volume=0.6, sfx_volume=0.7):
     Diver, Tentacles, score, oxygen_system, bg_x, bubbles, map_fragment = reset_game()
     oxygen_system.set_sfx_volume(sfx_volume)
     game_over      = False
+    fragment_missed = False
     level_complete = False
     started        = False
     elapsed        = 0.0   # seconds since the game started (pausing doesn't count)
@@ -725,6 +732,7 @@ def run_level2(screen, music_volume=0.6, sfx_volume=0.7):
                     oxygen_system.set_sfx_volume(globals()['sfx_volume'])
                     last_tentacle_time = pygame.time.get_ticks()
                     game_over      = False
+                    fragment_missed = False
                     level_complete = False
                     started        = False
                     elapsed        = 0.0
@@ -786,11 +794,31 @@ def run_level2(screen, music_volume=0.6, sfx_volume=0.7):
                     score += 1
                     ding_sound.play()   # play ding on every point
                     if score >= 30 and map_fragment is None:
-                        map_fragment = MapFragment(Diver.x + 300, Diver.y)
+                        # Find the nearest tentacle still ahead on screen (or just off-right).
+                        # Widen its gap so it's trivially passable, then centre the fragment in it.
+                        ahead = sorted(
+                            [t for t in Tentacles if t.x + t.width > Diver.x],
+                            key=lambda t: t.x
+                        )
+                        if ahead:
+                            host = ahead[0]
+                            # force the gap to be very wide and centred for easy access
+                            host.gap_y = HEIGHT // 2
+                            host.forced_gap = True   # flag so we can widen its draw gap
+                            frag_x = host.x + host.width // 2
+                            frag_y = host.gap_y
+                        else:
+                            # no tentacle ahead yet — spawn one gap-width ahead of the diver
+                            frag_x = Diver.x + 300
+                            frag_y = HEIGHT // 2
+                        map_fragment = MapFragment(frag_x, frag_y)
 
             if map_fragment and not map_fragment.collected:
                 map_fragment.update(dt)
-                if map_fragment.check_collect(Diver.get_rect()):
+                if map_fragment.offscreen():
+                    game_over = True
+                    fragment_missed = True
+                elif map_fragment.check_collect(Diver.get_rect()):
                     draw_background(screen, bg_x)
                     for b in bubbles:
                         b.draw(screen)
@@ -832,9 +860,11 @@ def run_level2(screen, music_volume=0.6, sfx_volume=0.7):
             draw_text_center(screen, "Press SPACE to start", font_small, TEXT_COLOR, HEIGHT // 2)
 
         if game_over:
-            draw_text_center(screen, "Game Over",          font_big,   (200, 30, 30), HEIGHT // 2 - 30)
-            draw_text_center(screen, f"Score: {score}",    font_small, TEXT_COLOR,    HEIGHT // 2 + 15)
-            draw_text_center(screen, "Press R to restart", font_small, TEXT_COLOR,    HEIGHT // 2 + 50)
+            draw_text_center(screen, "Game Over",          font_big,   (200, 30, 30), HEIGHT // 2 - 50)
+            if fragment_missed:
+                draw_text_center(screen, "You missed the map fragment!", font_small, (255, 160, 60), HEIGHT // 2 + 5)
+            draw_text_center(screen, f"Score: {score}",    font_small, TEXT_COLOR,    HEIGHT // 2 + 35)
+            draw_text_center(screen, "Press R to restart", font_small, TEXT_COLOR,    HEIGHT // 2 + 65)
 
         pygame.display.flip()
 

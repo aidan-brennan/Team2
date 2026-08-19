@@ -619,17 +619,73 @@ def run_level2(screen, music_volume=0.6, sfx_volume=0.7):
     font_small = pygame.font.SysFont(None, 32)
 
     def _show_level_complete_screen():
-        """Simple 'press SPACE to continue' screen shown after the level
-        complete cutscene finishes. Matches the cutscene's font/colors."""
-        hint_col = (200, 220, 255)
+        """SC1→SC2→SC3→SC4 fullscreen slideshow, then returns 'next'.
+        Each image fills the screen. SPACE fades to the next image.
+        On the last image SPACE returns 'next' to proceed to lvl3."""
+        sc_paths = [
+            os.path.join(IMAGES_DIR, "SC1.png"),
+            os.path.join(IMAGES_DIR, "SC2.png"),
+            os.path.join(IMAGES_DIR, "SC3.png"),
+            os.path.join(IMAGES_DIR, "SC4.png"),
+        ]
+        # Load and scale every image to fill the screen
+        slides = []
+        for path in sc_paths:
+            try:
+                img = pygame.image.load(path).convert()
+                img = pygame.transform.smoothscale(img, (WIDTH, HEIGHT))
+            except (pygame.error, FileNotFoundError):
+                img = pygame.Surface((WIDTH, HEIGHT))
+                img.fill((10, 10, 30))
+            slides.append(img)
+
+        FADE_DURATION = 0.6   # seconds for cross-fade
+        hint_font = pygame.font.SysFont(None, 30)
+        hint_col  = (200, 220, 255)
+        sc_clock  = pygame.time.Clock()
+
+        idx    = 0
+        fading = False
+        fade_t = 0.0
+
         while True:
+            dt_sc = sc_clock.tick(60) / 1000
+
             for ev in pygame.event.get():
                 if ev.type == pygame.QUIT:
                     return "quit"
                 if ev.type == pygame.KEYDOWN and ev.key == pygame.K_SPACE:
-                    return "next"
-            draw_text_center(screen, "LEVEL COMPLETE", font_big, (50, 220, 50), HEIGHT // 2 - 30)
-            draw_text_center(screen, "Press SPACE to continue", font_small, hint_col, HEIGHT // 2 + 20)
+                    if not fading:
+                        if idx >= len(slides) - 1:
+                            return "next"   # last slide — go to lvl3
+                        else:
+                            fading = True
+                            fade_t = 0.0
+
+            if fading:
+                fade_t += dt_sc
+                if fade_t >= FADE_DURATION:
+                    idx   += 1
+                    fading = False
+                    fade_t = 0.0
+
+            # draw current slide
+            screen.blit(slides[idx], (0, 0))
+
+            # cross-fade: overlay the next slide at increasing opacity
+            if fading and idx + 1 < len(slides):
+                next_surf = slides[idx + 1].copy()
+                next_surf.set_alpha(int((fade_t / FADE_DURATION) * 255))
+                screen.blit(next_surf, (0, 0))
+
+            # pulsing hint text (hidden during fade so it doesn't distract)
+            if not fading:
+                is_last   = idx >= len(slides) - 1
+                hint_text = "Press SPACE to begin Level 3" if is_last else "Press SPACE to continue"
+                hint_surf = hint_font.render(hint_text, True, hint_col)
+                hint_surf.set_alpha(int(180 + 75 * sin(pygame.time.get_ticks() / 400)))
+                screen.blit(hint_surf, hint_surf.get_rect(midbottom=(WIDTH // 2, HEIGHT - 18)))
+
             pygame.display.flip()
 
     Diver, Tentacles, score, oxygen_system, bg_x, bubbles, map_fragment = reset_game()
@@ -686,8 +742,8 @@ def run_level2(screen, music_volume=0.6, sfx_volume=0.7):
             elapsed += dt
 
             # ── difficulty ramp ───────────────────────────────────────────
-            # difficulty goes from 1.0 at start to 2.0 at 90 seconds, capped there
-            difficulty = 1.0 + min(1.0, elapsed / 90.0)
+            # difficulty goes from 1.0 at start to 2.0 at 70 seconds, capped there
+            difficulty = 1.0 + min(1.0, elapsed / 70.0)
 
             # scroll speed: 4 → 8 over 90 s
             tentacle_speed = tentacle_speed_base * difficulty
@@ -697,9 +753,7 @@ def run_level2(screen, music_volume=0.6, sfx_volume=0.7):
             current_spawn_min = int(tentacle_spawn_min * spawn_scale)
             current_spawn_max = int(tentacle_spawn_max * spawn_scale)
 
-            # oxygen drain: 5 → 10 per second over 90 s
-            oxygen_system.drain_per_second = 5.0 * difficulty
-            # ─────────────────────────────────────────────────────────────
+          
 
             Diver.update(dt)
 

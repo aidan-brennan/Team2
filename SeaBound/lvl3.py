@@ -333,29 +333,45 @@ def load_sound(filename):
 # ------------------------------------------------------------------
 
 sound_footstep    = load_sound("footstep.wav")      # plays while Jerry walks
-sound_sword_swing = load_sound("sword_swing.wav")   # when SPACE is pressed
 sound_sword_hit   = load_sound("sword_hit.wav")     # sword hits a pirate/boss
 sound_bullet_hit  = load_sound("bullet_hit.wav")    # bullet hits an enemy
+
+# ------------------------------------------------------------------
+# SWORD SWING SOUND
+# Put your sword swing sound filename below (file goes in SeaBound/Audio/)
+# ------------------------------------------------------------------
+SWORD_SWING_SOUND_PATH = "sword attack.ogg"   # <-- SeaBound/Audio/sword attack.ogg
+sound_sword_swing = load_sound(SWORD_SWING_SOUND_PATH)
 
 # ------------------------------------------------------------------
 # JERRY HURT SOUND
 # Change the filename below to use your own sound file.
 # The file must be placed in SeaBound/Audio/
 # ------------------------------------------------------------------
-JERRY_HURT_SOUND_PATH = "jerry damage.ogg"   # <-- put your filename here
+JERRY_HURT_SOUND_PATH = "jerry damage.ogg"
 sound_player_hit = load_sound(JERRY_HURT_SOUND_PATH)
 
-# Harpoon / gun fired — loaded from the exact path provided
-# Uses load_sound() so the game keeps running even if the file is missing
-sound_shoot = load_sound("gun_shot.mp3")   # SeaBound/Audio/gun_shot.mp3
+# Harpoon / gun fired
+sound_shoot = load_sound("gun_shot.mp3")
 
 # ------------------------------------------------------------------
-# PIRATE DEATH SOUND
-# Change the filename below to use your own sound file.
-# The file must be placed in SeaBound/Audio/
+# PIRATE DEATH SOUNDS  (3 variants — one is chosen at random each kill)
+# Put the filenames below.  All files go in SeaBound/Audio/
 # ------------------------------------------------------------------
-PIRATE_DEATH_SOUND_PATH = "pirate die.ogg"   # <-- put your filename here
-sound_enemy_death = load_sound(PIRATE_DEATH_SOUND_PATH)
+PIRATE_DEATH_SOUND_1 = "pirate_death 1.ogg"   # <-- SeaBound/Audio/pirate_death 1.ogg
+PIRATE_DEATH_SOUND_2 = "pirate_death 2.ogg"   # <-- SeaBound/Audio/pirate_death 2.ogg
+PIRATE_DEATH_SOUND_3 = "pirate_death 3.ogg"   # <-- SeaBound/Audio/pirate_death 3.ogg
+
+sound_enemy_death_1 = load_sound(PIRATE_DEATH_SOUND_1)
+sound_enemy_death_2 = load_sound(PIRATE_DEATH_SOUND_2)
+sound_enemy_death_3 = load_sound(PIRATE_DEATH_SOUND_3)
+
+# List of the 3 death sounds — random.choice() picks one when a pirate dies
+pirate_death_sounds = [sound_enemy_death_1, sound_enemy_death_2, sound_enemy_death_3]
+
+# Keep sound_enemy_death pointing at sound 1 so boss-death and any
+# other existing play_sound(sound_enemy_death) calls still work
+sound_enemy_death = sound_enemy_death_1
 
 sound_boss_hit    = load_sound("boss_hit.wav")      # boss takes a hit
 sound_game_over   = load_sound("game_over.wav")     # player runs out of lives
@@ -1675,10 +1691,10 @@ def run_game():
 
             if player.get_rect().colliderect(heart.get_rect()):
                 heart.collected = True
-                # Give Jerry +1 life, but never more than 5
-                if lives < 5:
+                # Give Jerry +1 life, but never more than 3
+                if lives < 3:
                     lives += 1
-                play_sound(sound_player_hit)   # reuse a sound — swap for a pickup sound later
+                # No damage sound on pickup — removed as requested
 
         # =====================================================
         # PIRATE SPAWNING
@@ -1756,7 +1772,8 @@ def run_game():
 
                     if is_dead:
                         pirates.remove(pirate)
-                        play_sound(sound_enemy_death)
+                        # Play a random death sound from the 3 options
+                        play_sound(random.choice(pirate_death_sounds))
                         score += 10
 
                     if harpoon in harpoons:
@@ -1808,7 +1825,8 @@ def run_game():
 
                     if is_dead:
                         pirates.remove(pirate)
-                        play_sound(sound_enemy_death)
+                        # Play a random death sound from the 3 options
+                        play_sound(random.choice(pirate_death_sounds))
                         score += 10
 
         # =====================================================

@@ -1247,45 +1247,35 @@ class Bubble(pygame.sprite.Sprite):
 # ---------------------------------------------------------------------------
 # HealthBubble — collectible that restores 1 HP (capped at max_health)
 # ---------------------------------------------------------------------------
+def _make_heart_bubble_placeholder():
+    """Fallback art if heart bubble.png is missing."""
+    R = 18
+    size = R * 2 + 6
+    surf = pygame.Surface((size, size), pygame.SRCALPHA)
+    cx = cy = size // 2
+    pygame.draw.circle(surf, (80, 220, 120, 100), (cx, cy), R + 3)
+    pygame.draw.circle(surf, (60, 200, 100, 210), (cx, cy), R)
+    pygame.draw.circle(surf, (200, 255, 215, 160), (cx, cy), R, 2)
+    cw, cl = 3, 8   # red cross / plus symbol
+    pygame.draw.rect(surf, (220, 40, 40, 230), (cx - cw, cy - cl, cw*2, cl*2))
+    pygame.draw.rect(surf, (220, 40, 40, 230), (cx - cl, cy - cw, cl*2, cw*2))
+    return surf
+
+
+_heart_bubble_img = None   # set inside run_level1() once pygame is initialised
+
+
 class HealthBubble(pygame.sprite.Sprite):
     def __init__(self, pos, groups):
         super().__init__(groups)
-        self._build_image()
-        self.pos      = pygame.Vector2(pos)
-        self.rect     = self.image.get_frect(center=self.pos)
-        self._timer   = 0.0
-        self._pulse   = uniform(0, 2 * pi)   # phase offset for glow pulse
+        self.image      = _heart_bubble_img
+        self.pos        = pygame.Vector2(pos)
+        self.rect       = self.image.get_frect(center=self.pos)
+        self._timer     = 0.0
         self.bob_offset = 0.0
-
-    def _build_image(self, pulse=0.0):
-        R = 18
-        size = R * 2 + 6
-        surf = pygame.Surface((size, size), pygame.SRCALPHA)
-        cx = cy = size // 2
-
-        # outer glow ring (pulses)
-        glow_a = int(60 + 40 * sin(pulse))
-        pygame.draw.circle(surf, (80, 220, 120, glow_a), (cx, cy), R + 3)
-
-        # main bubble body — green tinted
-        pygame.draw.circle(surf, (60, 200, 100, 210), (cx, cy), R)
-        # inner bright highlight
-        pygame.draw.circle(surf, (160, 255, 180, 130), (cx - R//3, cy - R//3), R // 3)
-        # white rim
-        pygame.draw.circle(surf, (200, 255, 215, 160), (cx, cy), R, 2)
-
-        # red cross / plus symbol in the centre
-        cw = 3   # cross arm width
-        cl = 8   # cross arm half-length
-        pygame.draw.rect(surf, (220, 40, 40, 230), (cx - cw, cy - cl, cw*2, cl*2))
-        pygame.draw.rect(surf, (220, 40, 40, 230), (cx - cl, cy - cw, cl*2, cw*2))
-
-        self.image = surf
 
     def update(self, dt):
         self._timer += dt
-        self._pulse += dt * 3.0
-        self._build_image(self._pulse)
         self.bob_offset = sin(self._timer * 2.5) * 6
         self.rect.center = self.pos
 
@@ -2207,7 +2197,7 @@ def run_level1(screen, music_volume=0.6, sfx_volume=0.7):
     global SHARK_SWIM_FRAMES, SHARK_ATTACK_FRAMES, BOSS_SWIM_FRAMES, BOSS_ATTACK_FRAMES
     global background_surf, bg_width, bg_height, WORLD_BOUNDS
     global FLOOR_Y, floor_surf, PLAY_BOUNDS
-    global mapfrag_surf, _o2_img
+    global mapfrag_surf, _o2_img, _heart_bubble_img
     global all_sprites, harpoon_sprites, shark_sprites, jellyfish_sprites
     global bolt_sprites, bubble_sprites, fragment_sprites, healthbubble_sprites, oxygentank_sprites
     global player
@@ -2297,9 +2287,17 @@ def run_level1(screen, music_volume=0.6, sfx_volume=0.7):
 
     try:
         _o2_raw = pygame.image.load(os.path.join(IMAGES_DIR, "o2 tank.png")).convert_alpha()
-        _o2_img = pygame.transform.smoothscale(_o2_raw, (52, 52))
+        _o2_img = pygame.transform.smoothscale(_o2_raw, (70, 70))   # slightly bigger — easier to spot
     except (pygame.error, FileNotFoundError):
         _o2_img = _make_o2_surface()
+
+    try:
+        _hb_raw = pygame.image.load(os.path.join(IMAGES_DIR, "heart bubble.png")).convert_alpha()
+        _hb_w   = 46
+        _hb_h   = round(_hb_w * _hb_raw.get_height() / _hb_raw.get_width())
+        _heart_bubble_img = pygame.transform.smoothscale(_hb_raw, (_hb_w, _hb_h))
+    except (pygame.error, FileNotFoundError):
+        _heart_bubble_img = _make_heart_bubble_placeholder()
 
     # ---- sprite groups ----
     all_sprites       = CameraGroup()

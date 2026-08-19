@@ -1924,6 +1924,62 @@ def _draw_end_screen(title_text, title_col, sub_text):
     display_surface.blit(ss, ss.get_rect(center=(WINDOW_WIDTH // 2, WINDOW_HEIGHT // 2 + 46)))
 
 # ---------------------------------------------------------------------------
+# Level-1 outro cutscene — 4 panels shown after the map fragment is
+# collected, before handing off to level 2.
+# ---------------------------------------------------------------------------
+_lvl1_outro_frames = None
+
+def _make_cutscene_placeholder():
+    surf = pygame.Surface((1150, 820))
+    surf.fill((6, 20, 40))
+    return surf
+
+def _load_outro_cutscene_frames():
+    global _lvl1_outro_frames
+    if _lvl1_outro_frames is None:
+        names  = ["lvl1cut1.png", "lvl1cut2.png", "lvl1cut3.png", "lvl1cut4.png"]
+        frames = []
+        for name in names:
+            raw = load_or_placeholder(os.path.join(IMAGES_DIR, name),
+                                       _make_cutscene_placeholder, alpha=False)
+            frames.append(pygame.transform.smoothscale(raw, (970, 570)))
+        _lvl1_outro_frames = frames
+    return _lvl1_outro_frames
+
+
+def run_level1_outro_cutscene():
+    """4-panel outro cutscene. SPACE advances each panel; the last one
+    prompts 'Press SPACE to start' instead of 'continue'. Returns 'next'
+    once the player clicks through the final panel, or 'quit' on window
+    close."""
+    frames = _load_outro_cutscene_frames()
+    idx    = 0
+
+    while idx < len(frames):
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                return "quit"
+            if event.type == pygame.KEYDOWN and event.key == pygame.K_SPACE:
+                idx += 1
+
+        display_surface.fill((0, 0, 0))
+        frame = frames[min(idx, len(frames) - 1)]
+        display_surface.blit(frame, frame.get_rect(center=(WINDOW_WIDTH // 2, WINDOW_HEIGHT // 2)))
+
+        is_last = (idx == len(frames) - 1)
+        prompt  = "Press  SPACE  to start" if is_last else "Press  SPACE  to continue"
+        box = pygame.Surface((WINDOW_WIDTH, 50), pygame.SRCALPHA)
+        box.fill((0, 0, 0, 150))
+        display_surface.blit(box, (0, WINDOW_HEIGHT - 60))
+        ps = font.render(prompt, True, (255, 255, 255))
+        display_surface.blit(ps, ps.get_rect(center=(WINDOW_WIDTH // 2, WINDOW_HEIGHT - 35)))
+
+        pygame.display.update()
+        clock.tick(60)
+
+    return "next"
+
+# ---------------------------------------------------------------------------
 # Reset
 # ---------------------------------------------------------------------------
 def reset_game():
@@ -2354,7 +2410,7 @@ def run_level1(screen, music_volume=0.6, sfx_volume=0.7):
             if event.type == pygame.KEYDOWN and event.key == pygame.K_SPACE:
                 if level_complete:
                     pygame.time.set_timer(AMBIENT_BUBBLE_EVENT, 0)
-                    return "next"
+                    return run_level1_outro_cutscene()
                 if current_wave == 0 and tutorial_overlay.visible:
                     tutorial_overlay.visible = False
 

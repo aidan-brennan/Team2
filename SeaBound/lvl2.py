@@ -10,8 +10,8 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 IMAGES_DIR = os.path.join(BASE_DIR, "Images")
 AUDIO_DIR = os.path.join(BASE_DIR, "Audio")
 
-WIDTH = 1000
-HEIGHT = 600
+WIDTH = 1280
+HEIGHT = 720
 
 Gravity = 0.25
 Swim_strength = -7
@@ -331,7 +331,7 @@ def run_options():
 
         # stub row
         ks = label_font.render("Window:", True, (200, 230, 255))
-        vs = label_font.render("1000 x 600", True, (160, 190, 140))
+        vs = label_font.render("1280 x 720", True, (160, 190, 140))
         screen.blit(ks, ks.get_rect(right=WIDTH // 2 - 20, centery=410))
         screen.blit(vs, vs.get_rect(left=WIDTH  // 2 + 20, centery=410))
 

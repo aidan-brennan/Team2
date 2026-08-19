@@ -336,20 +336,26 @@ sound_footstep    = load_sound("footstep.wav")      # plays while Jerry walks
 sound_sword_swing = load_sound("sword_swing.wav")   # when SPACE is pressed
 sound_sword_hit   = load_sound("sword_hit.wav")     # sword hits a pirate/boss
 sound_bullet_hit  = load_sound("bullet_hit.wav")    # bullet hits an enemy
-sound_player_hit  = load_sound("player_hit.wav")    # Jerry takes damage
+
+# ------------------------------------------------------------------
+# JERRY HURT SOUND
+# Change the filename below to use your own sound file.
+# The file must be placed in SeaBound/Audio/
+# ------------------------------------------------------------------
+JERRY_HURT_SOUND_PATH = "jerry damage.ogg"   # <-- put your filename here
+sound_player_hit = load_sound(JERRY_HURT_SOUND_PATH)
 
 # Harpoon / gun fired — loaded from the exact path provided
 # Uses load_sound() so the game keeps running even if the file is missing
 sound_shoot = load_sound("gun_shot.mp3")   # SeaBound/Audio/gun_shot.mp3
 
-# Pirate death sound
-_pirate_die_path  = join(AUDIO_DIR, "pirate die.ogg")
-try:
-    sound_enemy_death = pygame.mixer.Sound(_pirate_die_path)
-    sound_enemy_death.set_volume(SFX_VOLUME)
-except Exception:
-    print("[Sound] Could not load: pirate die.ogg")
-    sound_enemy_death = None
+# ------------------------------------------------------------------
+# PIRATE DEATH SOUND
+# Change the filename below to use your own sound file.
+# The file must be placed in SeaBound/Audio/
+# ------------------------------------------------------------------
+PIRATE_DEATH_SOUND_PATH = "pirate die.ogg"   # <-- put your filename here
+sound_enemy_death = load_sound(PIRATE_DEATH_SOUND_PATH)
 
 sound_boss_hit    = load_sound("boss_hit.wav")      # boss takes a hit
 sound_game_over   = load_sound("game_over.wav")     # player runs out of lives
@@ -457,18 +463,19 @@ class Player:
         dx = 0
         dy = 0
 
-        if keys[pygame.K_LEFT]:
+        # Arrow keys OR WASD — both work, existing mechanics unchanged
+        if keys[pygame.K_LEFT] or keys[pygame.K_a]:
             dx = -self.speed
             self.facing_right = False
 
-        if keys[pygame.K_RIGHT]:
+        if keys[pygame.K_RIGHT] or keys[pygame.K_d]:
             dx = self.speed
             self.facing_right = True
 
-        if keys[pygame.K_UP]:
+        if keys[pygame.K_UP] or keys[pygame.K_w]:
             dy = -self.speed
 
-        if keys[pygame.K_DOWN]:
+        if keys[pygame.K_DOWN] or keys[pygame.K_s]:
             dy = self.speed
 
         # Diagonal movement fix:

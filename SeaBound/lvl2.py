@@ -415,12 +415,13 @@ def run_level_complete_sequence(frozen_frame):
     presses a key/click to dismiss the final frame."""
     seq_clock  = pygame.time.Clock()
     cx, cy     = WIDTH // 2, HEIGHT // 2
-    title_font = pygame.font.SysFont(None, 68)
-    hint_font  = pygame.font.SysFont(None, 28)
+    title_font = pygame.font.SysFont(None, max(48, HEIGHT // 10))
+    hint_font  = pygame.font.SysFont(None, max(22, HEIGHT // 26))
 
-    DISPLAY_SIZE = (340, 340)
-    FULL_SIZE    = (480, 480)
-    FRAG_SIZE    = (220, 220)
+    # sizes scaled to the current resolution
+    DISPLAY_SIZE = (min(WIDTH, HEIGHT) * 56 // 100,) * 2   # ~56% of short dimension
+    FULL_SIZE    = (min(WIDTH, HEIGHT) * 78 // 100,) * 2   # ~78% of short dimension
+    FRAG_SIZE    = (min(WIDTH, HEIGHT) * 36 // 100,) * 2   # ~36% of short dimension
 
     frag1_join  = pygame.transform.smoothscale(mapfrag1_img, FRAG_SIZE)
     frag2_join  = pygame.transform.smoothscale(mapfrag2_img, FRAG_SIZE)
@@ -537,7 +538,7 @@ def draw_oxygen_bar(surface, oxygen, max_oxygen):
     """
     small_font_o2 = pygame.font.SysFont("arial", 22)
     o2_bar_w, o2_bar_h = 200, 16
-    o2_bar_x, o2_bar_y = 16, HEIGHT - 70
+    o2_bar_x, o2_bar_y = 16, HEIGHT - 90
     o2_ratio = oxygen / max_oxygen if max_oxygen > 0 else 0.0
     o2_col   = (0, 200, 255) if o2_ratio > 0.3 else (255, 80, 80)
     _draw_panel(surface, o2_bar_x - 10, o2_bar_y - 30, o2_bar_w + 20, o2_bar_h + 42, alpha=180, radius=10)

@@ -64,6 +64,11 @@ HARPOON_SPEED = 10
 # How many HP the boss has
 BOSS_MAX_HP = 8
 
+# How many frames between each pirate walk animation frame swap.
+# 12 frames at 60fps = roughly 5 steps per second.
+# Lower this number to make the animation faster, raise it to slow it down.
+PIRATE_ANIM_SPEED = 12
+
 # Set to True to see collision boxes drawn on screen (useful for testing)
 # Set to False for normal play
 SHOW_HITBOXES = False
@@ -191,10 +196,25 @@ sword_swing_left = []
 for frame in sword_swing_right:
     sword_swing_left.append(pygame.transform.flip(frame, True, False))
 
-# Pirate
-pirate_img      = pygame.image.load(join(IMAGES_DIR, "pirate.png")).convert_alpha()
-pirate_img      = pygame.transform.scale(pirate_img, (150, 120))
-pirate_img_left = pygame.transform.flip(pirate_img, True, False)   # pre-flipped for left-side pirates
+# Pirate — two walking frames for the animation
+# Frame 0 = skeleton.png     (default / standing pose)
+# Frame 1 = skeletonwalking 1.png  (mid-stride pose)
+# Both are scaled to the same size as the original pirate sprite (150x120)
+# so nothing else in the game changes.
+pirate_walk_frame0 = pygame.image.load(join(IMAGES_DIR, "skeleton.png")).convert_alpha()
+pirate_walk_frame0 = pygame.transform.scale(pirate_walk_frame0, (150, 120))
+
+pirate_walk_frame1 = pygame.image.load(join(IMAGES_DIR, "skeletonwalking 1.png")).convert_alpha()
+pirate_walk_frame1 = pygame.transform.scale(pirate_walk_frame1, (150, 120))
+
+# Pre-flip both frames for left-side pirates (they face the other way)
+pirate_walk_frame0_left = pygame.transform.flip(pirate_walk_frame0, True, False)
+pirate_walk_frame1_left = pygame.transform.flip(pirate_walk_frame1, True, False)
+
+# Keep pirate_img and pirate_img_left pointing at frame 0 so any other
+# code that still references them continues to work unchanged.
+pirate_img      = pirate_walk_frame0
+pirate_img_left = pirate_walk_frame0_left
 
 # Heart collectable
 heart_img = pygame.image.load(join(IMAGES_DIR, "heart bubble.png")).convert_alpha()
@@ -315,18 +335,27 @@ def load_sound(filename):
 sound_footstep    = load_sound("footstep.wav")      # plays while Jerry walks
 sound_sword_swing = load_sound("sword_swing.wav")   # when SPACE is pressed
 sound_sword_hit   = load_sound("sword_hit.wav")     # sword hits a pirate/boss
-sound_shoot       = load_sound("shoot.wav")         # when X is pressed
 sound_bullet_hit  = load_sound("bullet_hit.wav")    # bullet hits an enemy
-sound_player_hit  = load_sound("player_hit.wav")    # Jerry takes damage
 
-# Pirate death sound
-_pirate_die_path  = join(AUDIO_DIR, "pirate die.ogg")
-try:
-    sound_enemy_death = pygame.mixer.Sound(_pirate_die_path)
-    sound_enemy_death.set_volume(SFX_VOLUME)
-except Exception:
-    print("[Sound] Could not load: pirate die.ogg")
-    sound_enemy_death = None
+# ------------------------------------------------------------------
+# JERRY HURT SOUND
+# Change the filename below to use your own sound file.
+# The file must be placed in SeaBound/Audio/
+# ------------------------------------------------------------------
+JERRY_HURT_SOUND_PATH = "jerry damage.ogg"   # <-- put your filename here
+sound_player_hit = load_sound(JERRY_HURT_SOUND_PATH)
+
+# Harpoon / gun fired — loaded from the exact path provided
+# Uses load_sound() so the game keeps running even if the file is missing
+sound_shoot = load_sound("gun_shot.mp3")   # SeaBound/Audio/gun_shot.mp3
+
+# ------------------------------------------------------------------
+# PIRATE DEATH SOUND
+# Change the filename below to use your own sound file.
+# The file must be placed in SeaBound/Audio/
+# ------------------------------------------------------------------
+PIRATE_DEATH_SOUND_PATH = "pirate die.ogg"   # <-- put your filename here
+sound_enemy_death = load_sound(PIRATE_DEATH_SOUND_PATH)
 
 sound_boss_hit    = load_sound("boss_hit.wav")      # boss takes a hit
 sound_game_over   = load_sound("game_over.wav")     # player runs out of lives
@@ -434,18 +463,19 @@ class Player:
         dx = 0
         dy = 0
 
-        if keys[pygame.K_LEFT]:
+        # Arrow keys OR WASD — both work, existing mechanics unchanged
+        if keys[pygame.K_LEFT] or keys[pygame.K_a]:
             dx = -self.speed
             self.facing_right = False
 
-        if keys[pygame.K_RIGHT]:
+        if keys[pygame.K_RIGHT] or keys[pygame.K_d]:
             dx = self.speed
             self.facing_right = True
 
-        if keys[pygame.K_UP]:
+        if keys[pygame.K_UP] or keys[pygame.K_w]:
             dy = -self.speed
 
-        if keys[pygame.K_DOWN]:
+        if keys[pygame.K_DOWN] or keys[pygame.K_s]:
             dy = self.speed
 
         # Diagonal movement fix:
@@ -605,13 +635,12 @@ class Player:
 
 class Pirate:
 
-    def __init__(self, x, y, from_left=False):
+    def __init__(self, x, y, from_left=False, wave=1):
         self.x = x
         self.y = y
 
         self.width  = 150
         self.height = 120
-        self.speed  = PIRATE_SPEED
 
         # from_left = True  means this pirate came from the LEFT edge
         # from_left = False means it came from the RIGHT edge (original behaviour)
@@ -623,13 +652,66 @@ class Pirate:
         else:
             self.image = pirate_img        # faces LEFT  (toward screen centre)
 
+        # ---------------------------------------------------------
+        # HP SYSTEM
+        # ---------------------------------------------------------
+        # Wave 1: all pirates have 1 HP (one hit = dead).
+        # Wave 2+: some pirates are "tough" with 2 HP.
+        #   The chance of being tough increases each wave:
+        #     Wave 2: 30% tough
+        #     Wave 3: 50% tough
+        #     Wave 4+: 70% tough
+        # A tough pirate takes TWO hits to kill.
+        # ---------------------------------------------------------
+        if wave >= 2:
+            # Calculate chance of being tough based on wave number
+            tough_chance = min(0.30 + (wave - 2) * 0.20, 0.70)
+            self.is_tough = random.random() < tough_chance
+        else:
+            self.is_tough = False
+
+        self.hp = 2 if self.is_tough else 1
+
+        # ---------------------------------------------------------
+        # SPEED
+        # ---------------------------------------------------------
+        # Base speed is PIRATE_SPEED.
+        # Tough pirates are always slightly faster.
+        # Additionally, ~30% of wave 2+ pirates get a random speed
+        # boost regardless of toughness.
+        # ---------------------------------------------------------
+        base_speed = PIRATE_SPEED
+
+        if self.is_tough:
+            base_speed += 0.6    # tough pirates are noticeably faster
+
+        if wave >= 2 and random.random() < 0.30:
+            base_speed += random.uniform(0.3, 0.8)   # random bonus for some pirates
+
+        self.speed = base_speed
+
         # Natural movement — each pirate steers toward a point that
         # drifts around Jerry rather than heading straight at him.
-        # offset_x/y define how far from Jerry's position the target is.
         self.offset_x      = random.randint(-120, 120)
         self.offset_y      = random.randint(-80,   80)
         self.wander_timer  = 0
         self.wander_change = random.randint(50, 130)
+
+        # Sword damage guard — prevents a single sword swing hitting
+        # the same pirate twice on consecutive frames.
+        self.sword_hit_this_swing = False
+
+        # ---------------------------------------------------------
+        # WALKING ANIMATION
+        # ---------------------------------------------------------
+        # anim_frame is 0 or 1 — which of the two walk images to show.
+        # anim_timer counts up every frame the pirate is moving.
+        # When anim_timer reaches PIRATE_ANIM_SPEED it flips the frame
+        # and resets.  Change PIRATE_ANIM_SPEED to adjust the speed:
+        #   lower number  = faster animation
+        #   higher number = slower animation
+        self.anim_frame = 0   # start on frame 0 (default pose)
+        self.anim_timer = 0   # counts frames since the last frame swap
 
     def move_towards_player(self, player):
         # =======================================================
@@ -675,14 +757,78 @@ class Pirate:
             # Occasionally speed up or slow down
             self.speed = PIRATE_SPEED + random.uniform(-0.5, 0.8)
 
+        # ---------------------------------------------------------
+        # WALK ANIMATION TIMER
+        # ---------------------------------------------------------
+        # Count up every frame the pirate is moving.
+        # When the timer hits PIRATE_ANIM_SPEED, swap the frame.
+        self.anim_timer += 1
+        if self.anim_timer >= PIRATE_ANIM_SPEED:
+            self.anim_timer = 0
+            # Toggle between frame 0 and frame 1
+            if self.anim_frame == 0:
+                self.anim_frame = 1
+            else:
+                self.anim_frame = 0
+
         if self.y < TOP_BARRIER:
             self.y = TOP_BARRIER
         if self.y > HEIGHT - self.height:
             self.y = HEIGHT - self.height
 
+    def take_damage(self, particles_list):
+        """
+        Reduce HP by 1.  Spawns a small hit flash.
+        Returns True if the pirate is now dead (HP reached 0).
+        """
+        self.hp -= 1
+
+        # Small orange flash where the pirate was hit
+        cx = self.x + self.width  // 2
+        cy = self.y + self.height // 2
+        for i in range(8):
+            particles_list.append(Particle(cx, cy))
+
+        return self.hp <= 0
+
     def draw(self):
-        # self.image was set in __init__ — no flipping needed here
-        screen.blit(self.image, (self.x, self.y))
+        # Pick the correct walk frame based on anim_frame (0 or 1)
+        # and which side the pirate came from (left or right).
+        if self.from_left:
+            # Left-side pirates face right — use the left-flipped versions
+            if self.anim_frame == 0:
+                image = pirate_walk_frame0_left
+            else:
+                image = pirate_walk_frame1_left
+        else:
+            # Right-side pirates face left — use the normal versions
+            if self.anim_frame == 0:
+                image = pirate_walk_frame0
+            else:
+                image = pirate_walk_frame1
+
+        screen.blit(image, (self.x, self.y))
+
+        # ---------------------------------------------------------
+        # SMALL HP BAR — only drawn for tough (2 HP) pirates
+        # ---------------------------------------------------------
+        # We only show the bar when the pirate started with 2 HP.
+        # Bar is small (50px wide, 5px tall) and sits just above
+        # the pirate sprite so it doesn't clutter normal fights.
+        # ---------------------------------------------------------
+        if self.is_tough:
+            bar_w = 50
+            bar_h = 5
+            bar_x = int(self.x + self.width // 2 - bar_w // 2)
+            bar_y = int(self.y - 10)
+
+            # Dark background track
+            pygame.draw.rect(screen, (60, 0, 0), (bar_x, bar_y, bar_w, bar_h))
+
+            # Fill — shrinks from full to half as HP drops from 2 to 1
+            fill_w = int(bar_w * (self.hp / 2))
+            bar_colour = (220, 60, 0) if self.hp == 1 else (220, 160, 0)
+            pygame.draw.rect(screen, bar_colour, (bar_x, bar_y, fill_w, bar_h))
 
         if SHOW_HITBOXES:
             pygame.draw.rect(screen, RED, self.get_rect(), 2)
@@ -1573,7 +1719,7 @@ def run_game():
                 if abs(spawn_y - player.y) < 60:
                     spawn_y += 80
 
-                new_pirate = Pirate(spawn_x, spawn_y, from_left=from_left)
+                new_pirate = Pirate(spawn_x, spawn_y, from_left=from_left, wave=wave)
                 pirates.append(new_pirate)
                 pirates_spawned += 1
 
@@ -1603,20 +1749,19 @@ def run_game():
             for pirate in pirates[:]:
                 if harpoon.get_rect().colliderect(pirate.get_rect()):
 
-                    # Spawn sparks where the pirate was
-                    cx = pirate.x + pirate.width  // 2
-                    cy = pirate.y + pirate.height // 2
-                    for i in range(18):
-                        particles.append(Particle(cx, cy))
+                    play_sound(sound_bullet_hit)    # bullet connects
 
-                    pirates.remove(pirate)
+                    # take_damage() returns True when the pirate is dead
+                    is_dead = pirate.take_damage(particles)
+
+                    if is_dead:
+                        pirates.remove(pirate)
+                        play_sound(sound_enemy_death)
+                        score += 10
 
                     if harpoon in harpoons:
                         harpoons.remove(harpoon)
 
-                    play_sound(sound_bullet_hit)    # bullet connects
-                    play_sound(sound_enemy_death)   # pirate dies
-                    score += 10
                     break   # one harpoon can only hit one pirate
 
         # =====================================================
@@ -1645,18 +1790,26 @@ def run_game():
 
         sword_rect = player.get_sword_rect()
 
+        # Reset the sword-hit guard at the START of each new swing
+        # (attack_timer == 24 is the very first tick of a swing)
+        if player.attack_timer == 24:
+            for pirate in pirates:
+                pirate.sword_hit_this_swing = False
+
         for pirate in pirates[:]:
             if sword_rect.colliderect(pirate.get_rect()):
+                # Only deal damage once per swing per pirate
+                if not pirate.sword_hit_this_swing:
+                    pirate.sword_hit_this_swing = True
 
-                cx = pirate.x + pirate.width  // 2
-                cy = pirate.y + pirate.height // 2
-                for i in range(18):
-                    particles.append(Particle(cx, cy))
+                    play_sound(sound_sword_hit)
 
-                pirates.remove(pirate)
-                play_sound(sound_sword_hit)     # sword connects with pirate
-                play_sound(sound_enemy_death)   # pirate dies
-                score += 10
+                    is_dead = pirate.take_damage(particles)
+
+                    if is_dead:
+                        pirates.remove(pirate)
+                        play_sound(sound_enemy_death)
+                        score += 10
 
         # =====================================================
         # COLLISIONS - SWORD vs BOSS

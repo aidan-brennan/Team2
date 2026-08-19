@@ -28,8 +28,8 @@ AUDIO_DIR = os.path.join(BASE_DIR, "Audio")
 
 LEVELS = [
     (run_level1, (1280, 720)),
-    (run_level2, (1000, 600)),
-    (run_level3, (1000, 600)),
+    (run_level2, (1280, 720)),
+    (run_level3, (1280, 720)),
 ]
 
 # The main menu / options / credits screens always run at the level-1 window

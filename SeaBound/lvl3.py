@@ -258,13 +258,13 @@ key_img = make_key_image()
 # Scale up 3× so it's clearly visible on screen (120 x 60)
 key_img = pygame.transform.scale(key_img, (120, 60))
 
-# Bullet - fired from Jerry's gun toward the mouse cursor.
-# We keep the original harpoon image at a readable size so it
-# can be rotated cleanly to point in any direction.
-# The base image faces RIGHT (0 degrees).  We rotate it each frame
-# depending on the angle the bullet is travelling.
-bullet_img_base = pygame.image.load(join(IMAGES_DIR, "harpoon.png")).convert_alpha()
-bullet_img_base = pygame.transform.scale(bullet_img_base, (40, 14))
+# Bullet image - loaded from the provided path and scaled proportionally.
+# We read the natural size first so we can scale by height without distorting.
+_bullet_raw = pygame.image.load(join(IMAGES_DIR, "bullet.png")).convert_alpha()
+# Scale to 14px tall, keeping the aspect ratio so the image isn't stretched
+_bullet_scale_h = 14
+_bullet_scale_w = int(_bullet_raw.get_width() * (_bullet_scale_h / _bullet_raw.get_height()))
+bullet_img_base = pygame.transform.scale(_bullet_raw, (_bullet_scale_w, _bullet_scale_h))
 bullet_img_base.set_colorkey(WHITE)
 
 # Boss - the Skeleton Captain (separate image, no tint needed)
@@ -376,6 +376,13 @@ sound_enemy_death = sound_enemy_death_1
 sound_boss_hit    = load_sound("boss_hit.wav")      # boss takes a hit
 sound_game_over   = load_sound("game_over.wav")     # player runs out of lives
 sound_wave_start  = load_sound("wave_start.wav")    # new wave begins
+
+# ------------------------------------------------------------------
+# COLLECTABLE PICKUP SOUND
+# File goes in SeaBound/Audio/
+# ------------------------------------------------------------------
+COLLECT_SOUND_PATH = "dingsound.mp3"   # <-- SeaBound/Audio/dingsound.mp3
+sound_collect = load_sound(COLLECT_SOUND_PATH)
 
 def play_sound(sound):
     """Play a sound if it loaded successfully.  Safe to call with None."""
@@ -1196,13 +1203,9 @@ def draw_text_centered_shadow(text, font, colour, center_x, center_y,
     screen.blit(surface, text_rect)
 
 
-def draw_hud(score, lives, wave, harpoon_cooldown):
+def draw_hud(lives, wave, harpoon_cooldown):
     # Dark strip across the top of the screen
     pygame.draw.rect(screen, (0, 10, 30), (0, 0, WIDTH, 50))
-
-    # Score
-    draw_text_centered_shadow(f"SCORE  {score}",
-                               font_small, YELLOW, 110, 25)
 
     # Wave
     draw_text_centered_shadow(f"WAVE  {wave}",
@@ -1403,7 +1406,7 @@ def show_boss_screen():
 # Shows the final score and lets the player restart
 # =============================================================
 
-def show_game_over_screen(score, wave):
+def show_game_over_screen(wave):
     waiting = True
     pulse   = 0
 
@@ -1424,7 +1427,6 @@ def show_game_over_screen(score, wave):
 
         screen.blit(background_img, (0, 0))
 
-        # Dark red panel
         panel = pygame.Surface((700, 400), pygame.SRCALPHA)
         panel.fill((30, 0, 0, 210))
         screen.blit(panel, (150, 100))
@@ -1432,8 +1434,6 @@ def show_game_over_screen(score, wave):
         draw_text_centered_shadow("GAME  OVER", font_big, RED,
                                    WIDTH // 2, HEIGHT // 2 - 140,
                                    shadow_colour=(80, 0, 0))
-        draw_text_centered(f"SCORE  {score}", font_large, YELLOW,
-                            WIDTH // 2, HEIGHT // 2 - 30)
         draw_text_centered(f"REACHED  WAVE  {wave}", font_medium, CYAN,
                             WIDTH // 2, HEIGHT // 2 + 50)
 
@@ -1458,7 +1458,7 @@ def show_game_over_screen(score, wave):
 # to move on.
 # =============================================================
 
-def show_win_screen(score, wave):
+def show_win_screen(wave):
     waiting = True
     pulse   = 0
 
@@ -1477,7 +1477,6 @@ def show_win_screen(score, wave):
 
         screen.blit(background_img, (0, 0))
 
-        # Dark gold/teal panel
         panel = pygame.Surface((700, 360), pygame.SRCALPHA)
         panel.fill((0, 30, 25, 210))
         screen.blit(panel, (150, 120))
@@ -1487,8 +1486,6 @@ def show_win_screen(score, wave):
                                    shadow_colour=(80, 60, 0))
         draw_text_centered("YOU DEFEATED THE PIRATE CAPTAIN", font_medium, CYAN,
                             WIDTH // 2, HEIGHT // 2 - 30)
-        draw_text_centered(f"SCORE  {score}", font_large, YELLOW,
-                            WIDTH // 2, HEIGHT // 2 + 40)
 
         pygame.draw.line(screen, CYAN, (220, HEIGHT // 2 + 90), (780, HEIGHT // 2 + 90), 2)
 
@@ -1538,7 +1535,6 @@ def run_game():
     # ---------------------------------------------------------
 
     lives               = 3
-    score               = 0
     harpoon_cooldown    = 0
     invincibility_timer = 0   # Jerry can't be hurt while this is > 0
 
@@ -1694,7 +1690,7 @@ def run_game():
                 # Give Jerry +1 life, but never more than 3
                 if lives < 3:
                     lives += 1
-                # No damage sound on pickup — removed as requested
+                play_sound(sound_collect)   # ding sound on pickup
 
         # =====================================================
         # PIRATE SPAWNING
@@ -1774,7 +1770,6 @@ def run_game():
                         pirates.remove(pirate)
                         # Play a random death sound from the 3 options
                         play_sound(random.choice(pirate_death_sounds))
-                        score += 10
 
                     if harpoon in harpoons:
                         harpoons.remove(harpoon)
@@ -1827,7 +1822,6 @@ def run_game():
                         pirates.remove(pirate)
                         # Play a random death sound from the 3 options
                         play_sound(random.choice(pirate_death_sounds))
-                        score += 10
 
         # =====================================================
         # COLLISIONS - SWORD vs BOSS
@@ -1893,7 +1887,6 @@ def run_game():
                 ))
 
             play_sound(sound_enemy_death)   # boss dies
-            score            += 200
             boss              = None
             boss_wave_active  = False
             boss_wave_done    = True
@@ -1946,9 +1939,6 @@ def run_game():
         if not boss_wave_active and not level_won:
             if pirates_spawned == pirates_per_wave and len(pirates) == 0:
 
-                # Wave clear bonus
-                score += wave * 25
-
                 next_wave = wave + 1
 
                 # Wave 4 is the boss wave (triggers only once)
@@ -1982,13 +1972,6 @@ def run_game():
                     heart = Heart()
 
         # =====================================================
-        # SCORE TRICKLE
-        # =====================================================
-        # Score slowly increases just for surviving (distance score)
-
-        score += 1
-
-        # =====================================================
         # DRAW EVERYTHING
         # =====================================================
 
@@ -2020,7 +2003,7 @@ def run_game():
             particle.draw()
 
         # 8. HUD
-        draw_hud(score // 10, lives, wave, harpoon_cooldown)
+        draw_hud(lives, wave, harpoon_cooldown)
 
         # Show "BOSS WAVE" in red over the wave counter during wave 4
         if boss_wave_active:
@@ -2033,8 +2016,7 @@ def run_game():
     # The while loop ended either because the boss was defeated
     # (level_won) or because lives reached 0.
     if level_won:
-        # Show the victory screen and return what the player chose.
-        result = show_win_screen(score // 10, wave)
+        result = show_win_screen(wave)
         stop_music()
         return result
 
@@ -2045,7 +2027,7 @@ def run_game():
     play_sound(sound_game_over)
 
     # Show the game over screen and return what the player chose.
-    result = show_game_over_screen(score // 10, wave)
+    result = show_game_over_screen(wave)
 
     # Stop the game-over music before returning so it doesn't
     # keep playing if the player restarts.

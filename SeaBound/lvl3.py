@@ -273,7 +273,7 @@ key_img = pygame.transform.scale(key_img, (120, 60))
 # canvas down shrinks the visible bullet to sub-pixel size.
 _bullet_raw     = pygame.image.load(join(IMAGES_DIR, "bullet.png")).convert_alpha()
 _bullet_content = _bullet_raw.subsurface(_bullet_raw.get_bounding_rect()).copy()
-_bullet_scale_w = 32
+_bullet_scale_w = 18
 _bullet_scale_h = max(1, round(_bullet_scale_w * _bullet_content.get_height() / _bullet_content.get_width()))
 bullet_img_base = pygame.transform.smoothscale(_bullet_content, (_bullet_scale_w, _bullet_scale_h))
 
@@ -904,8 +904,8 @@ class Harpoon:
         self.vy = vy
 
         # Size of the drawn image (used for off-screen check)
-        self.width  = 40
-        self.height = 14
+        self.width  = 10
+        self.height = 4
 
         # Work out the rotation angle from the velocity.
         # math.atan2 gives the angle in radians; we convert to degrees.
@@ -1370,6 +1370,11 @@ def show_start_screen():
 def show_wave_screen(wave_number):
     # Returns "quit" if the window is closed during the announcement,
     # otherwise returns None once the announcement has finished playing.
+    # Freeze whatever's currently on screen (the live game) and pop the
+    # announcement up over it, instead of wiping it back to a bare
+    # background each frame.
+    frozen_game = screen.copy()
+
     for frame in range(90):   # show for 90 frames (1.5 seconds at 60fps)
         clock.tick(60)
 
@@ -1385,7 +1390,7 @@ def show_wave_screen(wave_number):
         else:
             alpha = int(255 * (90 - frame) / 20)
 
-        screen.blit(background_img, (0, 0))
+        screen.blit(frozen_game, (0, 0))
 
         # Dark blue panel
         panel = pygame.Surface((500, 140), pygame.SRCALPHA)
@@ -1411,6 +1416,11 @@ def show_wave_screen(wave_number):
 def show_boss_screen():
     # Returns "quit" if the window is closed during the announcement,
     # otherwise returns None once the announcement has finished playing.
+    # Freeze whatever's currently on screen (the live game) and pop the
+    # announcement up over it, instead of wiping it back to a bare
+    # background each frame.
+    frozen_game = screen.copy()
+
     for frame in range(120):   # 2 seconds
         clock.tick(60)
 
@@ -1425,7 +1435,7 @@ def show_boss_screen():
         else:
             alpha = int(255 * (120 - frame) / 30)
 
-        screen.blit(background_img, (0, 0))
+        screen.blit(frozen_game, (0, 0))
 
         # Red overlay across the whole screen
         overlay = pygame.Surface((WIDTH, HEIGHT), pygame.SRCALPHA)
@@ -1620,6 +1630,13 @@ def run_game():
     # Set to True once the boss is defeated — ends the game loop in victory
     # instead of resuming pirate waves.
     level_won = False
+
+    # Draw one real frame of the level before the wave-1 announcement pops
+    # up over it — otherwise show_wave_screen() would freeze whatever was
+    # left on screen from the previous level/menu instead of this one.
+    screen.blit(background_img, (0, 0))
+    player.draw()
+    pygame.display.flip()
 
     # Show the wave 1 announcement
     if show_wave_screen(wave) == "quit":

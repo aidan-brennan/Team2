@@ -16,8 +16,8 @@ from os.path import join, dirname, abspath
 # this file).  "screen" is kept as a module-level global so every
 # function below (drawing, HUD, etc.) can keep using it unchanged.
 
-WIDTH  = 1000
-HEIGHT = 600
+WIDTH  = 1280
+HEIGHT = 720
 
 screen = None   # assigned inside run_level3()
 
@@ -84,6 +84,14 @@ GREEN  = ( 60, 200,  80)
 YELLOW = (255, 215,   0)
 ORANGE = (255, 140,   0)
 CYAN   = ( 80, 230, 255)
+
+# Warm wood/brass palette for the HUD — matches the shipwreck background
+# better than the icy blue tones used elsewhere in the game.
+HUD_PANEL_BG  = ( 38,  24,  14)
+HUD_PANEL_RIM = (150, 105,  55)
+HUD_CREAM     = (230, 205, 165)
+HUD_GOLD      = (255, 200,  90)
+HUD_AMBER     = (200, 130,  55)
 
 # =============================================================
 # IMAGE FOLDER PATH
@@ -259,13 +267,15 @@ key_img = make_key_image()
 key_img = pygame.transform.scale(key_img, (120, 60))
 
 # Bullet image - loaded from the provided path and scaled proportionally.
-# We read the natural size first so we can scale by height without distorting.
-_bullet_raw = pygame.image.load(join(IMAGES_DIR, "bullet.png")).convert_alpha()
-# Scale to 14px tall, keeping the aspect ratio so the image isn't stretched
-_bullet_scale_h = 14
-_bullet_scale_w = int(_bullet_raw.get_width() * (_bullet_scale_h / _bullet_raw.get_height()))
-bullet_img_base = pygame.transform.scale(_bullet_raw, (_bullet_scale_w, _bullet_scale_h))
-bullet_img_base.set_colorkey(WHITE)
+# bullet.png's actual drawn pixels are a tiny sliver inside a mostly-empty
+# 100x100 canvas, so we crop to the real (non-transparent) content first —
+# same trick lvl1.py uses for harpoon.png — otherwise scaling the whole
+# canvas down shrinks the visible bullet to sub-pixel size.
+_bullet_raw     = pygame.image.load(join(IMAGES_DIR, "bullet.png")).convert_alpha()
+_bullet_content = _bullet_raw.subsurface(_bullet_raw.get_bounding_rect()).copy()
+_bullet_scale_w = 18
+_bullet_scale_h = max(1, round(_bullet_scale_w * _bullet_content.get_height() / _bullet_content.get_width()))
+bullet_img_base = pygame.transform.smoothscale(_bullet_content, (_bullet_scale_w, _bullet_scale_h))
 
 # Boss - the Skeleton Captain (separate image, no tint needed)
 # Scaled to 170x200: bigger than normal pirates (150x120) but not massive.
@@ -894,8 +904,8 @@ class Harpoon:
         self.vy = vy
 
         # Size of the drawn image (used for off-screen check)
-        self.width  = 40
-        self.height = 14
+        self.width  = 10
+        self.height = 4
 
         # Work out the rotation angle from the velocity.
         # math.atan2 gives the angle in radians; we convert to degrees.
@@ -1203,51 +1213,88 @@ def draw_text_centered_shadow(text, font, colour, center_x, center_y,
     screen.blit(surface, text_rect)
 
 
-def draw_hud(lives, wave, harpoon_cooldown):
-    # Dark strip across the top of the screen
-    pygame.draw.rect(screen, (0, 10, 30), (0, 0, WIDTH, 50))
+def _draw_panel(x, y, w, h, alpha=200, radius=10):
+    """Dark frosted panel with a subtle blue rim (ported from lvl1.py)."""
+    s = pygame.Surface((w, h), pygame.SRCALPHA)
+    pygame.draw.rect(s, (*HUD_PANEL_BG, alpha),        (0, 0, w, h), border_radius=radius)
+    pygame.draw.rect(s, (*HUD_PANEL_RIM, 200),         (0, 0, w, h), 2, border_radius=radius)
+    screen.blit(s, (x, y))
 
-    # Wave
-    draw_text_centered_shadow(f"WAVE  {wave}",
-                               font_small, CYAN, WIDTH // 2, 25)
 
-    # Lives as heart symbols
-    hearts = ""
-    for i in range(lives):
-        hearts += "♥ "
-    if lives <= 1:
-        heart_colour = RED
+def _draw_bar(x, y, w, h, ratio, fill_col, bg_col=(30, 19, 11),
+              border_col=HUD_PANEL_RIM, radius=6):
+    """Generic rounded progress bar (ported from lvl1.py)."""
+    pygame.draw.rect(screen, bg_col, (x, y, w, h), border_radius=radius)
+    fw = max(0, round(w * ratio))
+    if fw:
+        pygame.draw.rect(screen, fill_col, (x, y, fw, h), border_radius=radius)
+    pygame.draw.rect(screen, border_col, (x, y, w, h), 2, border_radius=radius)
+
+
+MAX_LIVES = 3   # lives start at 3 and heart pickups cap back out at 3 (see run_game())
+
+
+def draw_hud(lives, wave, harpoon_cooldown, pirates_spawned, pirates_per_wave,
+             pirates_alive, boss_wave_active):
+    # ── Top strip — a single wood-brown banner spanning the full width,
+    # so lives and wave progress read as one aligned HUD instead of
+    # separate floating panels. ─────────────────────────────────────────
+    TOP_H = 66
+    pygame.draw.rect(screen, HUD_PANEL_BG, (0, 0, WIDTH, TOP_H))
+    pygame.draw.line(screen, HUD_PANEL_RIM, (0, TOP_H), (WIDTH, TOP_H), 3)
+
+    # Lives pips (left side of the strip)
+    pip_r, pip_gap = 14, 36
+    pip_y = TOP_H // 2
+    pips_left  = 24
+    pips_right = pips_left + (MAX_LIVES - 1) * pip_gap + pip_r * 2 + 10
+    for i in range(MAX_LIVES):
+        cx_ = pips_left + pip_r + i * pip_gap
+        if i < lives:
+            pygame.draw.circle(screen, (200, 40, 40), (cx_, pip_y), pip_r)
+            pygame.draw.circle(screen, (255, 120, 120), (cx_ - 4, pip_y - 4), 5)
+            pygame.draw.circle(screen, HUD_GOLD, (cx_, pip_y), pip_r, 2)
+        else:
+            pygame.draw.circle(screen, (45, 28, 16), (cx_, pip_y), pip_r)
+            pygame.draw.circle(screen, HUD_AMBER, (cx_, pip_y), pip_r, 2)
+
+    # A thin brass divider between the pips and the wave bar
+    pygame.draw.line(screen, HUD_PANEL_RIM, (pips_right, 12), (pips_right, TOP_H - 12), 2)
+
+    # Wave progress — label + bar share the rest of the strip's width
+    if boss_wave_active:
+        ltext, lcol    = "BOSS  WAVE", (255, 170, 90)
+        ratio, bar_col = 1.0, (200, 60, 30)
     else:
-        heart_colour = (255, 100, 100)
-    draw_text_centered_shadow(hearts, font_small, heart_colour, WIDTH - 120, 25)
+        killed     = max(0, pirates_spawned - pirates_alive)
+        ratio      = killed / pirates_per_wave if pirates_per_wave else 0.0
+        bar_col    = HUD_AMBER if ratio < 0.6 else (220, 140, 50) if ratio < 0.9 else HUD_GOLD
+        ltext      = f"WAVE {wave}   {killed} / {pirates_per_wave}"
+        lcol       = HUD_CREAM
 
-    # Harpoon cooldown bar
-    bar_x = 20
-    bar_y = 60
-    bar_w = 200
-    bar_h = 14
+    ls = font_small.render(ltext, True, lcol)
+    label_x = pips_right + 24
+    screen.blit(ls, ls.get_rect(midleft=(label_x, pip_y)))
 
-    # Background of the bar (dark)
-    pygame.draw.rect(screen, (40, 40, 60), (bar_x, bar_y, bar_w, bar_h), border_radius=4)
+    bar_x = label_x + ls.get_width() + 24
+    bar_w = WIDTH - bar_x - 24
+    bar_h = 20
+    _draw_bar(bar_x, pip_y - bar_h // 2, bar_w, bar_h, ratio, bar_col,
+              bg_col=(30, 19, 11), border_col=HUD_PANEL_RIM)
 
-    # Filled portion grows as the cooldown counts down to 0
-    if harpoon_cooldown == 0:
-        fill_w = bar_w
-        fill_colour = GREEN
-        label = "HARPOON  READY"
-        label_colour = GREEN
-    else:
-        fill_w = int(bar_w * (1 - harpoon_cooldown / HARPOON_COOLDOWN))
-        fill_colour = ORANGE
-        seconds = harpoon_cooldown / 60
-        label = f"HARPOON  {seconds:.1f}s"
-        label_colour = ORANGE
-
-    pygame.draw.rect(screen, fill_colour, (bar_x, bar_y, fill_w, bar_h), border_radius=4)
-
-    # Label below the bar
-    label_surface = font_tiny.render(label, True, label_colour)
-    screen.blit(label_surface, (bar_x, bar_y + bar_h + 4))
+    # ── Harpoon cooldown bar (bottom-left) — wood-brown panel style ───────
+    hb_w, hb_h = 200, 16
+    hb_x, hb_y = 16, HEIGHT - 44
+    _draw_panel(hb_x - 10, hb_y - 30, hb_w + 20, hb_h + 42, alpha=180, radius=10)
+    ready    = harpoon_cooldown == 0
+    hb_ratio = 1.0 if ready else max(0.0, 1 - harpoon_cooldown / HARPOON_COOLDOWN)
+    hb_col   = HUD_GOLD if ready else HUD_AMBER
+    _draw_bar(hb_x, hb_y, hb_w, hb_h, hb_ratio, hb_col,
+              bg_col=(30, 19, 11), border_col=HUD_PANEL_RIM)
+    hb_lbl_txt = "READY" if ready else f"HARPOON  {harpoon_cooldown / 60:.1f}s"
+    hb_lbl_col = HUD_GOLD if ready else HUD_CREAM
+    hb_lbl     = font_tiny.render(hb_lbl_txt, True, hb_lbl_col)
+    screen.blit(hb_lbl, hb_lbl.get_rect(midbottom=(hb_x + hb_w // 2, hb_y - 4)))
 
     # Reminder in the corner when hitboxes are on
     if SHOW_HITBOXES:
@@ -1283,29 +1330,33 @@ def show_start_screen():
         # Draw background
         screen.blit(background_img, (0, 0))
 
-        # Dark panel behind the text
-        panel = pygame.Surface((800, 480), pygame.SRCALPHA)
+        # Dark panel behind the text — centred on the window
+        panel_w, panel_h = 800, 480
+        panel_x = (WIDTH - panel_w) // 2
+        panel_y = (HEIGHT - panel_h) // 2
+        panel = pygame.Surface((panel_w, panel_h), pygame.SRCALPHA)
         panel.fill((0, 10, 35, 200))
-        screen.blit(panel, (100, 60))
+        screen.blit(panel, (panel_x, panel_y))
 
         # Title
         draw_text_centered_shadow("DEEP SEA DIVER", font_big, CYAN,
-                                   WIDTH // 2, 160, shadow_colour=(0, 40, 80))
+                                   WIDTH // 2, panel_y + 100, shadow_colour=(0, 40, 80))
         draw_text_centered("FIGHT THE PIRATE CREW", font_medium, YELLOW,
-                            WIDTH // 2, 260)
+                            WIDTH // 2, panel_y + 200)
 
         # Divider line
-        pygame.draw.line(screen, CYAN, (180, 295), (820, 295), 2)
+        pygame.draw.line(screen, CYAN, (panel_x + 80, panel_y + 235),
+                          (panel_x + panel_w - 80, panel_y + 235), 2)
 
         # Controls list
-        draw_text_centered("ARROW KEYS  -  Move",       font_small, WHITE, WIDTH // 2, 330)
-        draw_text_centered("SPACE       -  Sword Attack", font_small, WHITE, WIDTH // 2, 368)
-        draw_text_centered("X           -  Fire Harpoon", font_small, WHITE, WIDTH // 2, 406)
+        draw_text_centered("ARROW KEYS  -  Move",       font_small, WHITE, WIDTH // 2, panel_y + 270)
+        draw_text_centered("SPACE       -  Sword Attack", font_small, WHITE, WIDTH // 2, panel_y + 308)
+        draw_text_centered("X           -  Fire Harpoon", font_small, WHITE, WIDTH // 2, panel_y + 346)
 
         # Pulsing prompt
         prompt = font_medium.render("PRESS  ENTER  TO  START", True, WHITE)
         prompt.set_alpha(pulse_alpha)
-        prompt_rect = prompt.get_rect(center=(WIDTH // 2, 460))
+        prompt_rect = prompt.get_rect(center=(WIDTH // 2, panel_y + 400))
         screen.blit(prompt, prompt_rect)
 
         pygame.display.flip()
@@ -1319,6 +1370,11 @@ def show_start_screen():
 def show_wave_screen(wave_number):
     # Returns "quit" if the window is closed during the announcement,
     # otherwise returns None once the announcement has finished playing.
+    # Freeze whatever's currently on screen (the live game) and pop the
+    # announcement up over it, instead of wiping it back to a bare
+    # background each frame.
+    frozen_game = screen.copy()
+
     for frame in range(90):   # show for 90 frames (1.5 seconds at 60fps)
         clock.tick(60)
 
@@ -1334,7 +1390,7 @@ def show_wave_screen(wave_number):
         else:
             alpha = int(255 * (90 - frame) / 20)
 
-        screen.blit(background_img, (0, 0))
+        screen.blit(frozen_game, (0, 0))
 
         # Dark blue panel
         panel = pygame.Surface((500, 140), pygame.SRCALPHA)
@@ -1360,6 +1416,11 @@ def show_wave_screen(wave_number):
 def show_boss_screen():
     # Returns "quit" if the window is closed during the announcement,
     # otherwise returns None once the announcement has finished playing.
+    # Freeze whatever's currently on screen (the live game) and pop the
+    # announcement up over it, instead of wiping it back to a bare
+    # background each frame.
+    frozen_game = screen.copy()
+
     for frame in range(120):   # 2 seconds
         clock.tick(60)
 
@@ -1374,7 +1435,7 @@ def show_boss_screen():
         else:
             alpha = int(255 * (120 - frame) / 30)
 
-        screen.blit(background_img, (0, 0))
+        screen.blit(frozen_game, (0, 0))
 
         # Red overlay across the whole screen
         overlay = pygame.Surface((WIDTH, HEIGHT), pygame.SRCALPHA)
@@ -1427,9 +1488,10 @@ def show_game_over_screen(wave):
 
         screen.blit(background_img, (0, 0))
 
-        panel = pygame.Surface((700, 400), pygame.SRCALPHA)
+        panel_w = 700
+        panel = pygame.Surface((panel_w, 400), pygame.SRCALPHA)
         panel.fill((30, 0, 0, 210))
-        screen.blit(panel, (150, 100))
+        screen.blit(panel, ((WIDTH - panel_w) // 2, 100))
 
         draw_text_centered_shadow("GAME  OVER", font_big, RED,
                                    WIDTH // 2, HEIGHT // 2 - 140,
@@ -1437,7 +1499,8 @@ def show_game_over_screen(wave):
         draw_text_centered(f"REACHED  WAVE  {wave}", font_medium, CYAN,
                             WIDTH // 2, HEIGHT // 2 + 50)
 
-        pygame.draw.line(screen, RED, (220, HEIGHT // 2 + 90), (780, HEIGHT // 2 + 90), 2)
+        pygame.draw.line(screen, RED, (WIDTH // 2 - 280, HEIGHT // 2 + 90),
+                          (WIDTH // 2 + 280, HEIGHT // 2 + 90), 2)
 
         r_text = font_small.render("R - RESTART", True, WHITE)
         r_text.set_alpha(pulse_alpha)
@@ -1477,9 +1540,10 @@ def show_win_screen(wave):
 
         screen.blit(background_img, (0, 0))
 
-        panel = pygame.Surface((700, 360), pygame.SRCALPHA)
+        panel_w = 700
+        panel = pygame.Surface((panel_w, 360), pygame.SRCALPHA)
         panel.fill((0, 30, 25, 210))
-        screen.blit(panel, (150, 120))
+        screen.blit(panel, ((WIDTH - panel_w) // 2, 120))
 
         draw_text_centered_shadow("VICTORY!", font_big, YELLOW,
                                    WIDTH // 2, HEIGHT // 2 - 120,
@@ -1487,7 +1551,8 @@ def show_win_screen(wave):
         draw_text_centered("YOU DEFEATED THE PIRATE CAPTAIN", font_medium, CYAN,
                             WIDTH // 2, HEIGHT // 2 - 30)
 
-        pygame.draw.line(screen, CYAN, (220, HEIGHT // 2 + 90), (780, HEIGHT // 2 + 90), 2)
+        pygame.draw.line(screen, CYAN, (WIDTH // 2 - 280, HEIGHT // 2 + 90),
+                          (WIDTH // 2 + 280, HEIGHT // 2 + 90), 2)
 
         prompt = font_small.render("PRESS  SPACE  TO  CONTINUE", True, WHITE)
         prompt.set_alpha(pulse_alpha)
@@ -1566,6 +1631,13 @@ def run_game():
     # instead of resuming pirate waves.
     level_won = False
 
+    # Draw one real frame of the level before the wave-1 announcement pops
+    # up over it — otherwise show_wave_screen() would freeze whatever was
+    # left on screen from the previous level/menu instead of this one.
+    screen.blit(background_img, (0, 0))
+    player.draw()
+    pygame.display.flip()
+
     # Show the wave 1 announcement
     if show_wave_screen(wave) == "quit":
         return "quit"
@@ -1621,8 +1693,17 @@ def run_game():
                 # Get the current mouse position
                 mouse_x, mouse_y = pygame.mouse.get_pos()
 
-                # Bullet spawns at the tip of Jerry's gun (front-centre of body)
-                bullet_x = player.x + 55
+                # Face the shot direction *before* working out the muzzle
+                # position, so the bullet spawns from the correct side of
+                # the gun once the sprite mirrors to face that way.
+                player.facing_right = (mouse_x >= player.x)
+
+                # Bullet spawns at the tip of Jerry's gun. The x offset
+                # mirrors with facing_right since the sprite itself flips.
+                if player.facing_right:
+                    bullet_x = player.x + 55
+                else:
+                    bullet_x = player.x + (player.width - 55)
                 bullet_y = player.y + 50
 
                 # Work out the direction from the gun to the mouse
@@ -1644,9 +1725,6 @@ def run_game():
                 play_sound(sound_shoot)
 
                 harpoon_cooldown = HARPOON_COOLDOWN
-
-                # Update facing direction based on where the cursor is
-                player.facing_right = (mouse_x >= player.x)
 
         # =====================================================
         # UPDATE PLAYER
@@ -2003,14 +2081,10 @@ def run_game():
             particle.draw()
 
         # 8. HUD
-        draw_hud(lives, wave, harpoon_cooldown)
+        draw_hud(lives, wave, harpoon_cooldown, pirates_spawned, pirates_per_wave,
+                  len(pirates), boss_wave_active)
 
-        # Show "BOSS WAVE" in red over the wave counter during wave 4
-        if boss_wave_active:
-            draw_text_centered_shadow("BOSS  WAVE", font_medium, RED,
-                                       WIDTH // 2, 25, shadow_colour=(60, 0, 0))
-
-        # 8. Show the finished frame
+        # 9. Show the finished frame
         pygame.display.flip()
 
     # The while loop ended either because the boss was defeated

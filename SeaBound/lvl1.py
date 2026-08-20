@@ -81,156 +81,10 @@ SFX_BOSS_DIE       = None
 SFX_OXYGEN_PICKUP  = None
 
 # ---------------------------------------------------------------------------
-# Art loading helpers
+# Jellyfish art — always procedural (there is no jellyfish.png asset; this
+# is the real rendering, not a fallback), used directly by the Jellyfish
+# class below and by its animated frames.
 # ---------------------------------------------------------------------------
-def load_or_placeholder(path, placeholder_maker, alpha=True):
-    try:
-        surf = pygame.image.load(path)
-        return surf.convert_alpha() if alpha else surf.convert()
-    except (pygame.error, FileNotFoundError) as e:
-        print(f"[art] couldn't load '{path}' ({e}) - using placeholder art instead.")
-        return placeholder_maker()
-
-def make_player_surface():
-    """
-    Diver with a wetsuit body, swim fins, face mask, and a harpoon gun barrel.
-    Faces LEFT by default (the code flips it for right-facing).
-    Canvas: 90 x 54
-    """
-    W, H = 90, 54
-    surf = pygame.Surface((W, H), pygame.SRCALPHA)
-
-    # --- body (wetsuit, dark teal-blue) ---
-    body_pts = [(10, 27), (20, 12), (55, 10), (65, 18), (65, 36), (55, 44), (20, 42)]
-    pygame.draw.polygon(surf, (30, 80, 100),  body_pts)
-    pygame.draw.polygon(surf, (20, 55, 75),   body_pts, 2)
-
-    # --- wetsuit stripe (yellow accent down the side) ---
-    stripe_pts = [(22, 14), (52, 12), (52, 20), (22, 22)]
-    pygame.draw.polygon(surf, (220, 190, 50), stripe_pts)
-
-    # --- head / helmet ---
-    pygame.draw.circle(surf, (45, 110, 130),  (18, 27), 12)   # helmet shell
-    pygame.draw.circle(surf, (15, 50,  70),   (18, 27), 10)   # dark visor base
-    pygame.draw.ellipse(surf, (100, 200, 230, 160), (10, 20, 14, 14))  # visor glass
-
-    # --- oxygen tank on back ---
-    pygame.draw.ellipse(surf, (180, 180, 200), (56, 14, 12, 26))
-    pygame.draw.ellipse(surf, (140, 140, 160), (56, 14, 12, 26), 1)
-    pygame.draw.line(surf, (160, 160, 180), (62, 14), (62,  8), 2)   # regulator pipe
-
-    # --- swim fins (bottom) ---
-    fin_pts = [(10, 42), (28, 42), (24, 54), (4, 52)]
-    pygame.draw.polygon(surf, (50, 160, 140), fin_pts)
-    pygame.draw.polygon(surf, (30, 120, 110), fin_pts, 1)
-
-    # --- harpoon gun barrel ---
-    pygame.draw.rect(surf,  (90, 60, 30),  pygame.Rect(32, 22, 34, 7), border_radius=2)
-    pygame.draw.rect(surf,  (60, 40, 20),  pygame.Rect(32, 22, 34, 7), 1, border_radius=2)
-    # gun grip
-    pygame.draw.polygon(surf, (70, 45, 25), [(42, 29), (50, 29), (48, 36), (40, 36)])
-    # muzzle tip
-    pygame.draw.rect(surf, (200, 200, 215), pygame.Rect(64, 23, 8, 5), border_radius=1)
-
-    # --- bubble from regulator ---
-    pygame.draw.circle(surf, (200, 230, 255, 140), (65, 6), 3)
-    pygame.draw.circle(surf, (200, 230, 255, 90),  (70, 3), 2)
-
-    return surf
-
-
-def make_harpoon_surface():
-    """Sleek harpoon bolt: wooden shaft + steel tip + flight vanes."""
-    W, H = 52, 14
-    surf = pygame.Surface((W, H), pygame.SRCALPHA)
-    # shaft
-    pygame.draw.rect(surf, (160, 110, 60), pygame.Rect(0, 5, 40, 4), border_radius=2)
-    pygame.draw.rect(surf, (130, 85,  40), pygame.Rect(0, 5, 40, 4), 1, border_radius=2)
-    # steel tip
-    pygame.draw.polygon(surf, (210, 215, 225), [(38, 2), (52, 7), (38, 12)])
-    pygame.draw.polygon(surf, (170, 175, 185), [(38, 2), (52, 7), (38, 12)], 1)
-    # vanes at tail
-    pygame.draw.polygon(surf, (200, 70, 50), [(0, 5), (8, 1), (8, 5)])
-    pygame.draw.polygon(surf, (200, 70, 50), [(0, 9), (8, 9), (8, 13)])
-    return surf
-
-
-def make_shark_surface():
-    """
-    Detailed shark: tapered body, dorsal + pectoral + caudal fins,
-    white belly, gill slits, eye with pupil, teeth hint.
-    Faces RIGHT. Canvas: 120 x 60
-    """
-    W, H = 120, 60
-    surf = pygame.Surface((W, H), pygame.SRCALPHA)
-
-    # --- main body ---
-    body_pts = [
-        (0, 30),          # snout tip
-        (15, 18), (50, 10), (85, 12),   # top edge
-        (110, 20),        # caudal peduncle top
-        (120, 12),        # tail top
-        (120, 48),        # tail bottom
-        (110, 40),        # caudal peduncle bottom
-        (85, 48), (50, 50), (15, 42),   # bottom edge
-        (8, 36),          # chin
-    ]
-    pygame.draw.polygon(surf, (100, 115, 130), body_pts)
-    pygame.draw.polygon(surf, (75,  88, 105),  body_pts, 2)
-
-    # --- white belly ---
-    belly_pts = [
-        (10, 32), (50, 40), (90, 38), (108, 32),
-        (90, 34), (50, 36), (10, 34),
-    ]
-    pygame.draw.polygon(surf, (230, 235, 240), belly_pts)
-
-    # --- dorsal fin ---
-    dorsal = [(55, 10), (68, -4), (80, 10)]
-    pygame.draw.polygon(surf, (80, 95, 112), dorsal)
-    pygame.draw.polygon(surf, (60, 75,  92), dorsal, 1)
-
-    # --- pectoral fin (side fin) ---
-    pec = [(35, 32), (25, 52), (55, 40)]
-    pygame.draw.polygon(surf, (85, 100, 118), pec)
-    pygame.draw.polygon(surf, (65,  80,  98), pec, 1)
-
-    # --- caudal (tail) fin ---
-    caudal_top    = [(108, 24), (120, 12), (115, 30)]
-    caudal_bottom = [(108, 36), (120, 48), (115, 30)]
-    pygame.draw.polygon(surf, (80, 95, 112), caudal_top)
-    pygame.draw.polygon(surf, (80, 95, 112), caudal_bottom)
-    pygame.draw.polygon(surf, (60, 75, 92),  caudal_top,    1)
-    pygame.draw.polygon(surf, (60, 75, 92),  caudal_bottom, 1)
-
-    # --- gill slits ---
-    for gx in [28, 33, 38]:
-        pygame.draw.arc(surf, (60, 72, 85),
-                        pygame.Rect(gx, 20, 4, 16), 0.2, pi - 0.2, 1)
-
-    # --- eye ---
-    pygame.draw.circle(surf, (240, 245, 250), (22, 22), 5)
-    pygame.draw.circle(surf, (15,  15,  20),  (23, 22), 3)   # pupil
-    pygame.draw.circle(surf, (255, 255, 255), (24, 21), 1)   # specular
-
-    # --- teeth hint at snout ---
-    for tx in [4, 8]:
-        pygame.draw.polygon(surf, (240, 242, 245),
-                            [(tx, 28), (tx + 3, 24), (tx + 6, 28)])
-
-    return surf
-
-
-def make_jellyfish_surface():
-    """
-    High-quality jellyfish: smooth gradient-like bell with inner organs,
-    rim fringe, and thick tentacles. Canvas 72 x 96.
-    Animated version is built frame-by-frame in the Jellyfish class;
-    this function is only used as the loaded-image fallback placeholder.
-    """
-    return _build_jelly_frame(0.0)
-
-
 def _build_jelly_frame(pulse: float):
     """
     Draw one frame of the jellyfish bell.
@@ -285,98 +139,6 @@ def _build_jelly_frame(pulse: float):
     # scale to pulse dimensions
     return pygame.transform.smoothscale(full, (bw, round(total_h * stretch)))
 
-def make_mapfrag_surface():
-    """Fallback if mapfrag1.png is missing."""
-    size = 40
-    surf = pygame.Surface((size, size), pygame.SRCALPHA)
-    points = [(size/2, 0),(size, size*0.4),(size*0.75, size),(size*0.25, size),(0, size*0.4)]
-    pygame.draw.polygon(surf, (250, 210, 90), points)
-    pygame.draw.polygon(surf, (255, 255, 255), points, 2)
-    return surf
-
-def make_background_tile():
-    """
-    Rich underwater background:
-    - Deep gradient from sunlit surface teal to abyssal navy
-    - Caustic light rays fanning from top
-    - Scattered coral silhouettes at the bottom
-    - Fine particle dust / plankton dots
-    - Subtle dark-rock sea floor strip
-    """
-    W, H = WINDOW_WIDTH, WINDOW_HEIGHT
-    tile = pygame.Surface((W, H))
-
-    # --- base gradient ---
-    surf_color  = pygame.Color(20, 120, 160)
-    abyss_color = pygame.Color(4,  22,  55)
-    for y in range(H):
-        t = y / H
-        c = surf_color.lerp(abyss_color, t ** 1.6)   # accelerated darkening
-        pygame.draw.line(tile, c, (0, y), (W, y))
-
-    # --- caustic light shafts from top ---
-    ray_surf = pygame.Surface((W, H), pygame.SRCALPHA)
-    num_rays = 9
-    for i in range(num_rays):
-        cx  = int(W * (i + 0.5) / num_rays) + randint(-30, 30)
-        w_r = randint(30, 80)
-        pts = [
-            (cx - w_r // 2, 0),
-            (cx + w_r // 2, 0),
-            (cx + w_r * 2,  H // 2),
-            (cx - w_r * 2,  H // 2),
-        ]
-        alpha = randint(12, 26)
-        pygame.draw.polygon(ray_surf, (180, 230, 255, alpha), pts)
-    tile.blit(ray_surf, (0, 0))
-
-    # --- sea-floor strip ---
-    floor_y = int(H * 0.82)
-    for y in range(floor_y, H):
-        t    = (y - floor_y) / (H - floor_y)
-        dark = pygame.Color(12, 28, 18).lerp(pygame.Color(6, 14, 8), t)
-        pygame.draw.line(tile, dark, (0, y), (W, y))
-
-    # --- coral / rock silhouettes ---
-    coral_surf = pygame.Surface((W, H), pygame.SRCALPHA)
-    colors = [(160, 60, 50, 200), (140, 80, 30, 200), (80, 130, 60, 200)]
-    for _ in range(18):
-        bx    = randint(0, W)
-        by    = randint(floor_y - 10, floor_y + 20)
-        btype = randint(0, 2)
-        col   = colors[btype]
-        if btype == 0:   # branching coral
-            h_c = randint(30, 70)
-            pygame.draw.line(coral_surf, col, (bx, by), (bx, by - h_c), 3)
-            pygame.draw.line(coral_surf, col, (bx, by - h_c // 2),
-                             (bx - 10, by - h_c // 2 - 15), 2)
-            pygame.draw.line(coral_surf, col, (bx, by - h_c // 2),
-                             (bx + 10, by - h_c // 2 - 15), 2)
-        elif btype == 1: # boulder
-            r = randint(12, 28)
-            pygame.draw.ellipse(coral_surf, col, (bx - r, by - r // 2, r * 2, r))
-        else:            # seaweed stalk
-            h_s = randint(25, 55)
-            for seg in range(h_s // 5):
-                sx  = bx + round(sin(seg * 0.8) * 5)
-                sy1 = by - seg * 5
-                sy2 = by - (seg + 1) * 5
-                pygame.draw.line(coral_surf, col, (sx, sy1), (sx, sy2), 2)
-    tile.blit(coral_surf, (0, 0))
-
-    # --- plankton / dust particles ---
-    for _ in range(120):
-        px = randint(0, W)
-        py = randint(0, floor_y)
-        r  = randint(1, 3)
-        a  = randint(30, 100)
-        # draw onto a tiny alpha surface to get transparency
-        dot = pygame.Surface((r * 2, r * 2), pygame.SRCALPHA)
-        pygame.draw.circle(dot, (200, 235, 255, a), (r, r), r)
-        tile.blit(dot, (px - r, py - r))
-
-    return tile.convert()
-
 def scale_surface(surf, factor):
     w, h = surf.get_size()
     return pygame.transform.smoothscale(surf, (max(1, round(w * factor)), max(1, round(h * factor))))
@@ -403,10 +165,6 @@ SHARK_SWIM_FRAMES   = None
 SHARK_ATTACK_FRAMES = None
 
 # Boss: load sharkboss.png (scaled up, no tint)
-def _make_boss_surface():
-    """Fallback if sharkboss.png is missing."""
-    return scale_surface(make_shark_surface(), BOSS_EXTRA_SCALE)
-
 BOSS_SWIM_FRAMES   = None
 BOSS_ATTACK_FRAMES = None
 background_surf = None
@@ -1247,21 +1005,6 @@ class Bubble(pygame.sprite.Sprite):
 # ---------------------------------------------------------------------------
 # HealthBubble — collectible that restores 1 HP (capped at max_health)
 # ---------------------------------------------------------------------------
-def _make_heart_bubble_placeholder():
-    """Fallback art if heart bubble.png is missing."""
-    R = 18
-    size = R * 2 + 6
-    surf = pygame.Surface((size, size), pygame.SRCALPHA)
-    cx = cy = size // 2
-    pygame.draw.circle(surf, (80, 220, 120, 100), (cx, cy), R + 3)
-    pygame.draw.circle(surf, (60, 200, 100, 210), (cx, cy), R)
-    pygame.draw.circle(surf, (200, 255, 215, 160), (cx, cy), R, 2)
-    cw, cl = 3, 8   # red cross / plus symbol
-    pygame.draw.rect(surf, (220, 40, 40, 230), (cx - cw, cy - cl, cw*2, cl*2))
-    pygame.draw.rect(surf, (220, 40, 40, 230), (cx - cl, cy - cw, cl*2, cw*2))
-    return surf
-
-
 _heart_bubble_img = None   # set inside run_level1() once pygame is initialised
 
 
@@ -1288,16 +1031,6 @@ class HealthBubble(pygame.sprite.Sprite):
 # OxygenTankPickup — uses OxygenTank from oxygentank.py for bob/visual logic,
 # wrapped in a Sprite so it works with CameraGroup and the free-roam world.
 # ---------------------------------------------------------------------------
-def _make_o2_surface():
-    """Fallback surface if o2 tank.png is missing."""
-    s = pygame.Surface((48, 48), pygame.SRCALPHA)
-    pygame.draw.ellipse(s, (60, 180, 220), (8, 4, 32, 42))
-    pygame.draw.ellipse(s, (100, 220, 255), (8, 4, 32, 42), 2)
-    pygame.draw.rect(s, (180, 180, 200), (18, 0, 12, 6), border_radius=3)
-    ts = pygame.font.SysFont("arial", 14, bold=True).render("O2", True, (255,255,255))
-    s.blit(ts, ts.get_rect(center=(24, 24)))
-    return s
-
 _o2_img = None   # set inside run_level1() once pygame is initialised
 
 
@@ -1919,19 +1652,13 @@ def _draw_end_screen(title_text, title_col, sub_text):
 # ---------------------------------------------------------------------------
 _lvl1_outro_frames = None
 
-def _make_cutscene_placeholder():
-    surf = pygame.Surface((1150, 820))
-    surf.fill((6, 20, 40))
-    return surf
-
 def _load_outro_cutscene_frames():
     global _lvl1_outro_frames
     if _lvl1_outro_frames is None:
         names  = ["lvl1cut1.png", "lvl1cut2.png", "lvl1cut3.png", "lvl1cut4.png"]
         frames = []
         for name in names:
-            raw = load_or_placeholder(os.path.join(IMAGES_DIR, name),
-                                       _make_cutscene_placeholder, alpha=False)
+            raw = pygame.image.load(os.path.join(IMAGES_DIR, name)).convert()
             frames.append(pygame.transform.smoothscale(raw, (970, 570)))
         _lvl1_outro_frames = frames
     return _lvl1_outro_frames
@@ -2242,25 +1969,25 @@ def run_level1(screen, music_volume=0.6, sfx_volume=0.7):
 
     # ---- art ----
     player_surf = scale_surface(
-        load_or_placeholder(os.path.join(IMAGES_DIR, "jerryharpoon.png"), make_player_surface), PLAYER_SCALE)
+        pygame.image.load(os.path.join(IMAGES_DIR, "jerryharpoon.png")).convert_alpha(), PLAYER_SCALE)
 
-    _harpoon_raw = load_or_placeholder(os.path.join(IMAGES_DIR, "harpoon.png"), make_harpoon_surface)
+    _harpoon_raw = pygame.image.load(os.path.join(IMAGES_DIR, "harpoon.png")).convert_alpha()
     harpoon_surf = scale_surface(_harpoon_raw.subsurface(_harpoon_raw.get_bounding_rect()).copy(), HARPOON_SCALE)
 
-    _shark1    = scale_surface(load_or_placeholder(os.path.join(IMAGES_DIR, "shark1.png"),    make_shark_surface), SHARK_SCALE)
-    _sharkmov1 = scale_surface(load_or_placeholder(os.path.join(IMAGES_DIR, "sharkmov1.png"), make_shark_surface), SHARK_SCALE)
-    _sharkmov2 = scale_surface(load_or_placeholder(os.path.join(IMAGES_DIR, "sharkmov2.png"), make_shark_surface), SHARK_SCALE)
+    _shark1    = scale_surface(pygame.image.load(os.path.join(IMAGES_DIR, "shark1.png")).convert_alpha(),    SHARK_SCALE)
+    _sharkmov1 = scale_surface(pygame.image.load(os.path.join(IMAGES_DIR, "sharkmov1.png")).convert_alpha(), SHARK_SCALE)
+    _sharkmov2 = scale_surface(pygame.image.load(os.path.join(IMAGES_DIR, "sharkmov2.png")).convert_alpha(), SHARK_SCALE)
 
     SHARK_SWIM_FRAMES   = [_shark1, _sharkmov1, _sharkmov2]
     SHARK_ATTACK_FRAMES = [_shark1]
 
     _boss1 = scale_surface(
-        load_or_placeholder(os.path.join(IMAGES_DIR, "sharkboss.png"), _make_boss_surface), BOSS_EXTRA_SCALE
+        pygame.image.load(os.path.join(IMAGES_DIR, "sharkboss.png")).convert_alpha(), BOSS_EXTRA_SCALE
     )
     BOSS_SWIM_FRAMES   = [_boss1]
     BOSS_ATTACK_FRAMES = [_boss1]
 
-    background_surf = load_or_placeholder(os.path.join(IMAGES_DIR, "background.jpeg"), make_background_tile, alpha=False)
+    background_surf = pygame.image.load(os.path.join(IMAGES_DIR, "background.jpeg")).convert()
     # Scale the map to 1.5× the window so it's compact but still scrollable
     _MAP_SCALE = 1.5
     background_surf = pygame.transform.smoothscale(
@@ -2281,23 +2008,18 @@ def run_level1(screen, music_volume=0.6, sfx_volume=0.7):
     # PLAY_BOUNDS — same as WORLD_BOUNDS but the bottom is the top of the floor
     PLAY_BOUNDS = pygame.Rect(0, 0, bg_width, FLOOR_Y)
 
-    # jellyfish.png is tried at runtime; _build_jelly_frame is the live fallback
-    load_or_placeholder(os.path.join(IMAGES_DIR, "jellyfish.png"), make_jellyfish_surface)   # preload/log only
-    mapfrag_surf = scale_surface(load_or_placeholder(os.path.join(IMAGES_DIR, "mapfrag1.png"), make_mapfrag_surface), 1.0)
+    # jellyfish.png never exists on disk by design — the jellyfish is always
+    # drawn procedurally via _build_jelly_frame() (see the Jellyfish class).
+    mapfrag_surf = scale_surface(
+        pygame.image.load(os.path.join(IMAGES_DIR, "mapfrag1.png")).convert_alpha(), 1.0)
 
-    try:
-        _o2_raw = pygame.image.load(os.path.join(IMAGES_DIR, "o2 tank.png")).convert_alpha()
-        _o2_img = pygame.transform.smoothscale(_o2_raw, (70, 70))   # slightly bigger — easier to spot
-    except (pygame.error, FileNotFoundError):
-        _o2_img = _make_o2_surface()
+    _o2_raw = pygame.image.load(os.path.join(IMAGES_DIR, "o2 tank.png")).convert_alpha()
+    _o2_img = pygame.transform.smoothscale(_o2_raw, (70, 70))   # slightly bigger — easier to spot
 
-    try:
-        _hb_raw = pygame.image.load(os.path.join(IMAGES_DIR, "heart bubble.png")).convert_alpha()
-        _hb_w   = 46
-        _hb_h   = round(_hb_w * _hb_raw.get_height() / _hb_raw.get_width())
-        _heart_bubble_img = pygame.transform.smoothscale(_hb_raw, (_hb_w, _hb_h))
-    except (pygame.error, FileNotFoundError):
-        _heart_bubble_img = _make_heart_bubble_placeholder()
+    _hb_raw = pygame.image.load(os.path.join(IMAGES_DIR, "heart bubble.png")).convert_alpha()
+    _hb_w   = 46
+    _hb_h   = round(_hb_w * _hb_raw.get_height() / _hb_raw.get_width())
+    _heart_bubble_img = pygame.transform.smoothscale(_hb_raw, (_hb_w, _hb_h))
 
     # ---- sprite groups ----
     all_sprites       = CameraGroup()

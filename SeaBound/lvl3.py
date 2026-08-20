@@ -1363,103 +1363,71 @@ def show_start_screen():
 
 
 # =============================================================
-# WAVE ANNOUNCEMENT SCREEN
-# Shows "WAVE 2 - SURVIVE!" briefly between waves
+# WAVE / BOSS ANNOUNCEMENT OVERLAYS
+# "WAVE 2 - SURVIVE!" and "BOSS INCOMING" banners, drawn as part of the
+# normal per-frame draw step in run_game() (see wave_announce_timer /
+# boss_announce_timer there) — same idea as lvl1.py's announcement
+# banners: purely a draw-time overlay, never a separate blocking loop,
+# so gameplay (movement, spawning, everything) keeps running underneath
+# the whole time instead of pausing while the banner is up.
 # =============================================================
 
-def show_wave_screen(wave_number):
-    # Returns "quit" if the window is closed during the announcement,
-    # otherwise returns None once the announcement has finished playing.
-    # Freeze whatever's currently on screen (the live game) and pop the
-    # announcement up over it, instead of wiping it back to a bare
-    # background each frame.
-    frozen_game = screen.copy()
-
-    for frame in range(90):   # show for 90 frames (1.5 seconds at 60fps)
-        clock.tick(60)
-
-        for event in pygame.event.get():
-            if event.type == pygame.QUIT:
-                return "quit"
-
-        # Fade in (frames 0-19), hold (20-69), fade out (70-89)
-        if frame < 20:
-            alpha = int(255 * frame / 20)
-        elif frame < 70:
-            alpha = 255
-        else:
-            alpha = int(255 * (90 - frame) / 20)
-
-        screen.blit(frozen_game, (0, 0))
-
-        # Dark blue panel
-        panel = pygame.Surface((500, 140), pygame.SRCALPHA)
-        panel.fill((0, 10, 35, min(200, alpha)))
-        screen.blit(panel, (WIDTH // 2 - 250, HEIGHT // 2 - 70))
-
-        wave_surf = font_large.render(f"WAVE  {wave_number}", True, CYAN)
-        wave_surf.set_alpha(alpha)
-        screen.blit(wave_surf, wave_surf.get_rect(center=(WIDTH // 2, HEIGHT // 2 - 20)))
-
-        survive_surf = font_medium.render("SURVIVE!", True, YELLOW)
-        survive_surf.set_alpha(alpha)
-        screen.blit(survive_surf, survive_surf.get_rect(center=(WIDTH // 2, HEIGHT // 2 + 45)))
-
-        pygame.display.flip()
+WAVE_ANNOUNCE_FRAMES = 90    # 1.5s at 60fps: fade in 0-19, hold 20-69, fade out 70-89
+BOSS_ANNOUNCE_FRAMES = 120   # 2.0s at 60fps: fade in 0-19, hold 20-89, fade out 90-119
 
 
-# =============================================================
-# BOSS ANNOUNCEMENT SCREEN
-# Shows a dramatic warning before wave 4
-# =============================================================
+def _draw_wave_announce_overlay(elapsed, wave_number):
+    # Fade in (frames 0-19), hold (20-69), fade out (70-89)
+    if elapsed < 20:
+        alpha = int(255 * elapsed / 20)
+    elif elapsed < 70:
+        alpha = 255
+    else:
+        alpha = int(255 * (90 - elapsed) / 20)
 
-def show_boss_screen():
-    # Returns "quit" if the window is closed during the announcement,
-    # otherwise returns None once the announcement has finished playing.
-    # Freeze whatever's currently on screen (the live game) and pop the
-    # announcement up over it, instead of wiping it back to a bare
-    # background each frame.
-    frozen_game = screen.copy()
+    # Dark blue panel
+    panel = pygame.Surface((500, 140), pygame.SRCALPHA)
+    panel.fill((0, 10, 35, min(200, alpha)))
+    screen.blit(panel, (WIDTH // 2 - 250, HEIGHT // 2 - 70))
 
-    for frame in range(120):   # 2 seconds
-        clock.tick(60)
+    wave_surf = font_large.render(f"WAVE  {wave_number}", True, CYAN)
+    wave_surf.set_alpha(alpha)
+    screen.blit(wave_surf, wave_surf.get_rect(center=(WIDTH // 2, HEIGHT // 2 - 20)))
 
-        for event in pygame.event.get():
-            if event.type == pygame.QUIT:
-                return "quit"
+    survive_surf = font_medium.render("SURVIVE!", True, YELLOW)
+    survive_surf.set_alpha(alpha)
+    screen.blit(survive_surf, survive_surf.get_rect(center=(WIDTH // 2, HEIGHT // 2 + 45)))
 
-        if frame < 20:
-            alpha = int(255 * frame / 20)
-        elif frame < 90:
-            alpha = 255
-        else:
-            alpha = int(255 * (120 - frame) / 30)
 
-        screen.blit(frozen_game, (0, 0))
+def _draw_boss_announce_overlay(elapsed):
+    if elapsed < 20:
+        alpha = int(255 * elapsed / 20)
+    elif elapsed < 90:
+        alpha = 255
+    else:
+        alpha = int(255 * (120 - elapsed) / 30)
 
-        # Red overlay across the whole screen
-        overlay = pygame.Surface((WIDTH, HEIGHT), pygame.SRCALPHA)
-        overlay.fill((80, 0, 0, min(160, alpha)))
-        screen.blit(overlay, (0, 0))
+    # Red overlay across the whole screen
+    overlay = pygame.Surface((WIDTH, HEIGHT), pygame.SRCALPHA)
+    overlay.fill((80, 0, 0, min(160, alpha)))
+    screen.blit(overlay, (0, 0))
 
-        # Dark red panel
-        panel = pygame.Surface((620, 200), pygame.SRCALPHA)
-        panel.fill((40, 0, 0, min(220, alpha)))
-        screen.blit(panel, (WIDTH // 2 - 310, HEIGHT // 2 - 100))
+    # Dark red panel
+    panel = pygame.Surface((620, 200), pygame.SRCALPHA)
+    panel.fill((40, 0, 0, min(220, alpha)))
+    screen.blit(panel, (WIDTH // 2 - 310, HEIGHT // 2 - 100))
 
-        s1 = font_large.render("!  BOSS  INCOMING  !", True, RED)
-        s1.set_alpha(alpha)
-        screen.blit(s1, s1.get_rect(center=(WIDTH // 2, HEIGHT // 2 - 35)))
+    s1 = font_large.render("!  BOSS  INCOMING  !", True, RED)
+    s1.set_alpha(alpha)
+    screen.blit(s1, s1.get_rect(center=(WIDTH // 2, HEIGHT // 2 - 35)))
 
-        s2 = font_medium.render("THE PIRATE CAPTAIN APPROACHES!", True, ORANGE)
-        s2.set_alpha(alpha)
-        screen.blit(s2, s2.get_rect(center=(WIDTH // 2, HEIGHT // 2 + 35)))
+    s2 = font_medium.render("THE PIRATE CAPTAIN APPROACHES!", True, ORANGE)
+    s2.set_alpha(alpha)
+    screen.blit(s2, s2.get_rect(center=(WIDTH // 2, HEIGHT // 2 + 35)))
 
-        s3 = font_small.render("Harpoon deals DOUBLE damage to the boss", True, YELLOW)
-        s3.set_alpha(alpha)
-        screen.blit(s3, s3.get_rect(center=(WIDTH // 2, HEIGHT // 2 + 80)))
-
-        pygame.display.flip()
+    s3 = font_small.render("Harpoon deals DOUBLE damage to the boss", True, YELLOW)
+    s3.set_alpha(alpha)
+    screen.blit(s3, s3.get_rect(center=(WIDTH // 2, HEIGHT // 2 + 80)))
 
 
 # =============================================================
@@ -1562,6 +1530,87 @@ def show_win_screen(wave):
 
 
 # =============================================================
+# BOSS-DEFEAT ENDSCREEN
+# 4 story panels shown 2 seconds after the boss dies, each fading in.
+# SPACE skips straight to the next panel. Plays before show_win_screen()
+# and, further up the chain, before main.py rolls the end credits.
+# =============================================================
+
+_lvl3_endscreen_frames = None
+
+
+def _make_endscreen_placeholder():
+    surf = pygame.Surface((WIDTH - 160, HEIGHT - 160))
+    surf.fill((20, 12, 6))
+    return surf
+
+
+def _load_endscreen_frames():
+    global _lvl3_endscreen_frames
+    if _lvl3_endscreen_frames is None:
+        names   = ["endscreen1.png", "endscreen2.png", "endscreen3.png", "endscreen4.png"]
+        max_w   = WIDTH - 160
+        max_h   = HEIGHT - 160
+        frames  = []
+        for name in names:
+            try:
+                raw = pygame.image.load(join(IMAGES_DIR, name)).convert()
+            except (pygame.error, FileNotFoundError):
+                frames.append(_make_endscreen_placeholder())
+                continue
+            scale = min(max_w / raw.get_width(), max_h / raw.get_height())
+            size  = (max(1, round(raw.get_width() * scale)), max(1, round(raw.get_height() * scale)))
+            frames.append(pygame.transform.smoothscale(raw, size))
+        _lvl3_endscreen_frames = frames
+    return _lvl3_endscreen_frames
+
+
+def _show_lvl3_endscreen():
+    """Waits 2s after the boss dies, then shows the 4 endscreen panels,
+    each fading in from black. SPACE jumps straight to the next panel at
+    any point (whether it's still fading in or already fully visible).
+    Returns 'quit' on window close, otherwise None."""
+    wait_ms    = 2000
+    wait_start = pygame.time.get_ticks()
+    while pygame.time.get_ticks() - wait_start < wait_ms:
+        clock.tick(60)
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                return "quit"
+
+    frames  = _load_endscreen_frames()
+    FADE_MS = 900
+
+    for frame in frames:
+        frame_rect = frame.get_rect(center=(WIDTH // 2, HEIGHT // 2))
+        fade_start = pygame.time.get_ticks()
+        advance    = False
+
+        while not advance:
+            clock.tick(60)
+            elapsed = pygame.time.get_ticks() - fade_start
+            alpha   = min(255, int(255 * elapsed / FADE_MS))
+
+            for event in pygame.event.get():
+                if event.type == pygame.QUIT:
+                    return "quit"
+                if event.type == pygame.KEYDOWN and event.key == pygame.K_SPACE:
+                    advance = True
+
+            screen.fill(BLACK)
+            frame.set_alpha(alpha)
+            screen.blit(frame, frame_rect)
+
+            hint = font_tiny.render("Press  SPACE  to continue", True, WHITE)
+            hint.set_alpha(min(alpha, 180))
+            screen.blit(hint, hint.get_rect(midbottom=(WIDTH // 2, HEIGHT - 20)))
+
+            pygame.display.flip()
+
+    return None
+
+
+# =============================================================
 # MAIN GAME FUNCTION
 # =============================================================
 #
@@ -1631,16 +1680,15 @@ def run_game():
     # instead of resuming pirate waves.
     level_won = False
 
-    # Draw one real frame of the level before the wave-1 announcement pops
-    # up over it — otherwise show_wave_screen() would freeze whatever was
-    # left on screen from the previous level/menu instead of this one.
-    screen.blit(background_img, (0, 0))
-    player.draw()
-    pygame.display.flip()
-
-    # Show the wave 1 announcement
-    if show_wave_screen(wave) == "quit":
-        return "quit"
+    # Wave/boss announcement banners — these count down like every other
+    # frame-based timer here (harpoon_cooldown, invincibility_timer, ...)
+    # and are drawn as an overlay from inside the main loop's own draw
+    # step (see _draw_wave_announce_overlay / _draw_boss_announce_overlay
+    # below). Gameplay keeps running underneath the whole time — nothing
+    # blocks on them the way the old show_wave_screen()/show_boss_screen()
+    # loops used to.
+    wave_announce_timer = WAVE_ANNOUNCE_FRAMES
+    boss_announce_timer = 0
 
     # Spawn the first heart collectable for wave 1
     heart = Heart()
@@ -1753,6 +1801,14 @@ def run_game():
         # Count down invincibility after being hit
         if invincibility_timer > 0:
             invincibility_timer -= 1
+
+        # Count down the wave/boss announcement banners (drawn later, in
+        # the DRAW section below) — purely visual, doesn't touch spawning
+        # or anything else so gameplay never pauses for them.
+        if wave_announce_timer > 0:
+            wave_announce_timer -= 1
+        if boss_announce_timer > 0:
+            boss_announce_timer -= 1
 
         # =====================================================
         # HEART COLLECTABLE
@@ -2024,9 +2080,7 @@ def run_game():
                     wave             = 4
                     boss_wave_active = True
                     pirates_spawned  = pirates_per_wave  # stop normal spawning
-
-                    if show_boss_screen() == "quit":
-                        return "quit"
+                    boss_announce_timer = BOSS_ANNOUNCE_FRAMES
 
                     # Switch to boss music for the big fight
                     play_music(MUSIC_BOSS)
@@ -2044,8 +2098,7 @@ def run_game():
                     spawn_timer      = 0
                     spawn_delay      = random.randint(60, 150)
                     play_sound(sound_wave_start)
-                    if show_wave_screen(wave) == "quit":
-                        return "quit"
+                    wave_announce_timer = WAVE_ANNOUNCE_FRAMES
                     # Spawn a fresh heart for the new wave
                     heart = Heart()
 
@@ -2084,12 +2137,22 @@ def run_game():
         draw_hud(lives, wave, harpoon_cooldown, pirates_spawned, pirates_per_wave,
                   len(pirates), boss_wave_active)
 
-        # 9. Show the finished frame
+        # 9. Wave/boss announcement banners — drawn on top of everything
+        # else, purely cosmetic, gameplay above has already kept running.
+        if wave_announce_timer > 0:
+            _draw_wave_announce_overlay(WAVE_ANNOUNCE_FRAMES - wave_announce_timer, wave)
+        if boss_announce_timer > 0:
+            _draw_boss_announce_overlay(BOSS_ANNOUNCE_FRAMES - boss_announce_timer)
+
+        # 10. Show the finished frame
         pygame.display.flip()
 
     # The while loop ended either because the boss was defeated
     # (level_won) or because lives reached 0.
     if level_won:
+        if _show_lvl3_endscreen() == "quit":
+            stop_music()
+            return "quit"
         result = show_win_screen(wave)
         stop_music()
         return result
